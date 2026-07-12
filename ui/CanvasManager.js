@@ -198,8 +198,12 @@ export class CanvasManager extends EventTarget {
     if (nodeIds.length === 0 && edgeIds.length === 0) return;
 
     const commands = [
-      ...edgeIds.filter((id) => this.topology.getEdge(id)).map((id) => new RemoveEdgeCommand(this.topology, id)),
-      ...nodeIds.filter((id) => this.topology.getNode(id)).map((id) => new RemoveNodeCommand(this.topology, id)),
+      ...edgeIds
+        .filter((id) => this.topology.getEdge(id))
+        .map((id) => new RemoveEdgeCommand(this.topology, id)),
+      ...nodeIds
+        .filter((id) => this.topology.getNode(id))
+        .map((id) => new RemoveNodeCommand(this.topology, id)),
     ];
     if (commands.length === 0) return;
 
@@ -323,7 +327,10 @@ export class CanvasManager extends EventTarget {
       this.render();
       return;
     }
-    if (nodeId === this.connectSourceId || this.topology.areConnected(this.connectSourceId, nodeId)) {
+    if (
+      nodeId === this.connectSourceId ||
+      this.topology.areConnected(this.connectSourceId, nodeId)
+    ) {
       this.cancelConnect();
       return;
     }

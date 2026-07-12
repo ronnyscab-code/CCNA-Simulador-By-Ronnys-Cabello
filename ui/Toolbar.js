@@ -150,7 +150,11 @@ export class Toolbar {
     const suggested = this.projectName === 'Untitled Topology' ? '' : this.projectName;
     const name = window.prompt('Project name:', suggested);
     if (!name) return;
-    this.currentProjectId = await this.storage.saveNamedProject(this.topology, name, this.currentProjectId);
+    this.currentProjectId = await this.storage.saveNamedProject(
+      this.topology,
+      name,
+      this.currentProjectId,
+    );
     this._setProjectName(name);
   }
 

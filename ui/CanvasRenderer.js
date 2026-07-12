@@ -87,7 +87,17 @@ export function buildCanvasLayers(svgRoot) {
 
   svgRoot.append(defs, gridRect, worldGroup, selectionBoxRect);
 
-  return { svgRoot, defs, gridPattern, gridRect, worldGroup, edgesLayer, nodesLayer, pendingEdgeLayer, selectionBoxRect };
+  return {
+    svgRoot,
+    defs,
+    gridPattern,
+    gridRect,
+    worldGroup,
+    edgesLayer,
+    nodesLayer,
+    pendingEdgeLayer,
+    selectionBoxRect,
+  };
 }
 
 /**

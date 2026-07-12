@@ -52,7 +52,11 @@ describe('HistoryManager', () => {
   test('undo/redo compose across different command types', () => {
     const topology = new Topology();
     const history = new HistoryManager();
-    const node = new Node({ id: topology.generateId(), deviceType: 'server', hostname: 'Server-1' });
+    const node = new Node({
+      id: topology.generateId(),
+      deviceType: 'server',
+      hostname: 'Server-1',
+    });
 
     history.execute(new AddNodeCommand(topology, node));
     history.execute(new RenameNodeCommand(topology, node.id, 'Server-1', 'Core-Server'));
@@ -78,7 +82,9 @@ describe('HistoryManager', () => {
   test('clear() empties both stacks', () => {
     const topology = new Topology();
     const history = new HistoryManager();
-    history.execute(new AddNodeCommand(topology, new Node({ id: topology.generateId(), deviceType: 'pc' })));
+    history.execute(
+      new AddNodeCommand(topology, new Node({ id: topology.generateId(), deviceType: 'pc' })),
+    );
     history.undo();
 
     history.clear();

@@ -10,13 +10,13 @@
 
 import { Topology } from '../topology/Topology.js';
 import { StorageManager } from '../engine/StorageManager.js';
-import { Camera } from './Camera.js';
-import { SelectionManager } from './SelectionManager.js';
-import { HistoryManager } from './HistoryManager.js';
-import { CanvasManager } from './CanvasManager.js';
-import { CanvasInteractions } from './CanvasInteractions.js';
-import { Toolbar } from './Toolbar.js';
-import { ContextMenu } from './ContextMenu.js';
+import { Camera } from '../ui/Camera.js';
+import { SelectionManager } from '../ui/SelectionManager.js';
+import { HistoryManager } from '../ui/HistoryManager.js';
+import { CanvasManager } from '../ui/CanvasManager.js';
+import { CanvasInteractions } from '../ui/CanvasInteractions.js';
+import { Toolbar } from '../ui/Toolbar.js';
+import { ContextMenu } from '../ui/ContextMenu.js';
 
 const AUTOSAVE_TOPOLOGY_EVENTS = [
   'nodeAdded',
@@ -37,12 +37,29 @@ function bootstrap() {
 
   const container = document.getElementById('canvas-container');
   const svgRoot = document.getElementById('canvas-root');
-  const canvasManager = new CanvasManager({ container, svgRoot, topology, camera, selection, history });
+  const canvasManager = new CanvasManager({
+    container,
+    svgRoot,
+    topology,
+    camera,
+    selection,
+    history,
+  });
 
   const contextMenu = new ContextMenu(document.getElementById('context-menu'));
   const interactions = new CanvasInteractions(canvasManager, {
     onContextMenu: (type, id, clientX, clientY) =>
-      showContextMenu({ contextMenu, canvasManager, topology, camera, interactions, type, id, clientX, clientY }),
+      showContextMenu({
+        contextMenu,
+        canvasManager,
+        topology,
+        camera,
+        interactions,
+        type,
+        id,
+        clientX,
+        clientY,
+      }),
   });
 
   new Toolbar({ topology, camera, history, storage, canvasManager });
@@ -79,7 +96,8 @@ function wireAutosave(topology, storage) {
  * @param {object} ctx
  */
 function showContextMenu(ctx) {
-  const { contextMenu, canvasManager, topology, camera, interactions, type, id, clientX, clientY } = ctx;
+  const { contextMenu, canvasManager, topology, camera, interactions, type, id, clientX, clientY } =
+    ctx;
 
   if (type === 'node') {
     contextMenu.show(clientX, clientY, [

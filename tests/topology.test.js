@@ -86,7 +86,9 @@ describe('Topology edges', () => {
     topology.addNode(a);
     topology.addNode(b);
     topology.addNode(c);
-    topology.addEdge(new Edge({ id: topology.generateId(), sourceNodeId: a.id, targetNodeId: b.id }));
+    topology.addEdge(
+      new Edge({ id: topology.generateId(), sourceNodeId: a.id, targetNodeId: b.id }),
+    );
 
     assert.equal(topology.areConnected(a.id, b.id), true);
     assert.equal(topology.areConnected(a.id, c.id), false);
@@ -100,7 +102,9 @@ describe('Topology serialization', () => {
     const b = makeNode(topology, 'pc', { x: 100, y: 200 });
     topology.addNode(a);
     topology.addNode(b);
-    topology.addEdge(new Edge({ id: topology.generateId(), sourceNodeId: a.id, targetNodeId: b.id }));
+    topology.addEdge(
+      new Edge({ id: topology.generateId(), sourceNodeId: a.id, targetNodeId: b.id }),
+    );
 
     const serialized = topology.toJSON();
     const restored = Topology.fromJSON(serialized);
