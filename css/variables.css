@@ -1,0 +1,63 @@
+/**
+ * Design tokens for OpenCCNA Simulator.
+ * A single dark, editor-like theme for v0.1 — light theme can be added
+ * later by scoping a second block under `:root[data-theme="light"]`.
+ */
+:root {
+  /* Surfaces */
+  --color-bg: #1e1f26;
+  --color-surface: #262832;
+  --color-surface-alt: #2f313d;
+  --color-border: #3a3d4a;
+  --color-canvas-bg: #181920;
+  --color-grid-dot: #33353f;
+
+  /* Text */
+  --color-text: #e6e7eb;
+  --color-text-muted: #9a9cab;
+  --color-text-inverse: #14151a;
+
+  /* Accent */
+  --color-accent: #4f9dff;
+  --color-accent-hover: #6cb0ff;
+  --color-accent-muted: rgba(79, 157, 255, 0.15);
+  --color-danger: #ff5c6c;
+  --color-success: #3ecf8e;
+
+  /* Node / edge */
+  --color-node-fill: #2f313d;
+  --color-node-border: #565a6b;
+  --color-node-selected: var(--color-accent);
+  --color-edge: #7c8093;
+  --color-edge-selected: var(--color-accent);
+  --color-selection-box-fill: rgba(79, 157, 255, 0.12);
+  --color-selection-box-border: var(--color-accent);
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+  --font-family-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  --font-size-sm: 12px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+
+  /* Layout */
+  --toolbar-height: 48px;
+  --status-bar-height: 28px;
+  --palette-width: 168px;
+
+  /* Motion */
+  --transition-fast: 120ms ease;
+}

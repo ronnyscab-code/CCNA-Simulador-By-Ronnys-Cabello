@@ -1,0 +1,251 @@
+/**
+ * Editor components: toolbar, device palette, canvas nodes/edges,
+ * selection box, context menu, status bar.
+ */
+
+/* --- Toolbar --- */
+.app-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-3);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.toolbar-brand {
+  gap: var(--space-2);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.brand-mark {
+  color: var(--color-accent);
+  letter-spacing: -2px;
+}
+
+#zoom-label {
+  min-width: 56px;
+  text-align: center;
+}
+
+/* --- Device palette --- */
+.device-palette {
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+
+.palette-title {
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.palette-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  user-select: none;
+  border: 1px solid transparent;
+}
+
+.palette-item:hover {
+  background: var(--color-surface-alt);
+  border-color: var(--color-border);
+}
+
+.palette-item.dragging {
+  opacity: 0.4;
+}
+
+.palette-item img {
+  width: 24px;
+  height: 24px;
+}
+
+.palette-hint {
+  margin-top: var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+/* --- Canvas: grid --- */
+.canvas-grid-dot {
+  fill: var(--color-grid-dot);
+}
+
+/* --- Canvas: nodes --- */
+.topology-node {
+  cursor: grab;
+}
+
+.topology-node.dragging {
+  cursor: grabbing;
+}
+
+.topology-node .node-hit-area {
+  fill: transparent;
+}
+
+.topology-node .node-icon-bg {
+  fill: var(--color-node-fill);
+  stroke: var(--color-node-border);
+  stroke-width: 1.5;
+  transition: stroke var(--transition-fast);
+}
+
+.topology-node.selected .node-icon-bg {
+  stroke: var(--color-node-selected);
+  stroke-width: 2;
+}
+
+.topology-node .node-label {
+  fill: var(--color-text);
+  font-family: var(--font-family);
+  font-size: 11px;
+  text-anchor: middle;
+  user-select: none;
+}
+
+.topology-node .node-label-edit {
+  font-family: var(--font-family);
+  font-size: 11px;
+  color: var(--color-text);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-accent);
+  border-radius: 2px;
+  text-align: center;
+  outline: none;
+}
+
+.topology-node.connect-source .node-icon-bg {
+  stroke: var(--color-success);
+  stroke-width: 2.5;
+}
+
+/* --- Canvas: edges --- */
+.topology-edge {
+  stroke: var(--color-edge);
+  stroke-width: 2;
+  fill: none;
+  cursor: pointer;
+}
+
+.topology-edge.selected {
+  stroke: var(--color-edge-selected);
+  stroke-width: 3;
+}
+
+.topology-edge-hit {
+  stroke: transparent;
+  stroke-width: 12;
+  fill: none;
+  cursor: pointer;
+}
+
+.pending-edge-preview {
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  fill: none;
+  pointer-events: none;
+}
+
+/* --- Selection rectangle --- */
+.selection-box {
+  fill: var(--color-selection-box-fill);
+  stroke: var(--color-selection-box-border);
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+/* --- Context menu --- */
+.context-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 160px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  padding: var(--space-1);
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.context-menu-item:hover {
+  background: var(--color-accent-muted);
+  color: var(--color-accent-hover);
+}
+
+.context-menu-item[aria-disabled='true'] {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  background: none;
+}
+
+.context-menu-separator {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--color-border);
+}
+
+.context-menu-shortcut {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  margin-left: var(--space-3);
+}
+
+/* --- Status bar --- */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-3);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.status-spacer {
+  flex: 1;
+}
+
+/* --- Connect mode cursor --- */
+.canvas-container.connect-mode-active #canvas-root {
+  cursor: crosshair;
+}

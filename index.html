@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenCCNA Simulator</title>
+    <meta
+      name="description"
+      content="A free, open-source, browser-based network simulator for studying CCNA."
+    />
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/editor.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-toolbar" id="toolbar">
+        <div class="toolbar-group toolbar-brand">
+          <span class="brand-mark" aria-hidden="true">◨◧</span>
+          <span class="brand-name">OpenCCNA Simulator</span>
+        </div>
+
+        <div class="toolbar-group" id="toolbar-history">
+          <button type="button" class="btn icon-btn" data-action="undo" title="Undo (Ctrl+Z)" disabled>
+            ↶
+          </button>
+          <button
+            type="button"
+            class="btn icon-btn"
+            data-action="redo"
+            title="Redo (Ctrl+Shift+Z)"
+            disabled
+          >
+            ↷
+          </button>
+        </div>
+
+        <div class="toolbar-group" id="toolbar-edit">
+          <button type="button" class="btn icon-btn" data-action="duplicate" title="Duplicate (Ctrl+D)">
+            ⧉
+          </button>
+          <button type="button" class="btn icon-btn" data-action="delete" title="Delete (Del)">
+            ✕
+          </button>
+          <button
+            type="button"
+            class="btn icon-btn"
+            data-action="connect"
+            title="Connect devices (C)"
+            aria-pressed="false"
+          >
+            ⌁
+          </button>
+        </div>
+
+        <div class="toolbar-group" id="toolbar-view">
+          <button type="button" class="btn icon-btn" data-action="zoom-out" title="Zoom out (-)">
+            −
+          </button>
+          <button type="button" class="btn" data-action="zoom-reset" title="Reset zoom (0)" id="zoom-label">
+            100%
+          </button>
+          <button type="button" class="btn icon-btn" data-action="zoom-in" title="Zoom in (+)">
+            +
+          </button>
+          <button
+            type="button"
+            class="btn icon-btn"
+            data-action="toggle-grid"
+            title="Toggle grid"
+            aria-pressed="true"
+          >
+            ▦
+          </button>
+          <button
+            type="button"
+            class="btn icon-btn"
+            data-action="toggle-snap"
+            title="Toggle snap to grid"
+            aria-pressed="true"
+          >
+            ⌗
+          </button>
+        </div>
+
+        <div class="toolbar-group toolbar-spacer"></div>
+
+        <div class="toolbar-group" id="toolbar-project">
+          <button type="button" class="btn" data-action="new-project" title="New topology">New</button>
+          <button type="button" class="btn" data-action="save-project" title="Save project to browser">
+            Save
+          </button>
+          <button type="button" class="btn" data-action="load-project" title="Load a saved project">
+            Load
+          </button>
+          <button type="button" class="btn" data-action="export-json" title="Export topology as JSON">
+            Export
+          </button>
+          <button type="button" class="btn" data-action="import-json" title="Import topology from JSON">
+            Import
+          </button>
+          <input type="file" id="import-file-input" accept="application/json" hidden />
+        </div>
+      </header>
+
+      <div class="app-body">
+        <aside class="device-palette" id="device-palette" aria-label="Device palette">
+          <h2 class="palette-title">Devices</h2>
+          <ul class="palette-list" id="palette-list">
+            <li class="palette-item" draggable="true" data-device-type="router">
+              <img src="assets/icons/router.svg" alt="" />
+              <span>Router</span>
+            </li>
+            <li class="palette-item" draggable="true" data-device-type="switch">
+              <img src="assets/icons/switch.svg" alt="" />
+              <span>Switch</span>
+            </li>
+            <li class="palette-item" draggable="true" data-device-type="pc">
+              <img src="assets/icons/pc.svg" alt="" />
+              <span>PC</span>
+            </li>
+            <li class="palette-item" draggable="true" data-device-type="laptop">
+              <img src="assets/icons/laptop.svg" alt="" />
+              <span>Laptop</span>
+            </li>
+            <li class="palette-item" draggable="true" data-device-type="server">
+              <img src="assets/icons/server.svg" alt="" />
+              <span>Server</span>
+            </li>
+            <li class="palette-item" draggable="true" data-device-type="firewall">
+              <img src="assets/icons/firewall.svg" alt="" />
+              <span>Firewall</span>
+            </li>
+            <li class="palette-item" draggable="true" data-device-type="accesspoint">
+              <img src="assets/icons/accesspoint.svg" alt="" />
+              <span>Access Point</span>
+            </li>
+            <li class="palette-item" draggable="true" data-device-type="cloud">
+              <img src="assets/icons/cloud.svg" alt="" />
+              <span>Cloud</span>
+            </li>
+            <li class="palette-item" draggable="true" data-device-type="printer">
+              <img src="assets/icons/printer.svg" alt="" />
+              <span>Printer</span>
+            </li>
+          </ul>
+          <p class="palette-hint">Drag a device onto the canvas to place it.</p>
+        </aside>
+
+        <main class="canvas-container" id="canvas-container">
+          <svg
+            id="canvas-root"
+            xmlns="http://www.w3.org/2000/svg"
+            width="100%"
+            height="100%"
+            role="application"
+            aria-label="Network topology canvas"
+          ></svg>
+        </main>
+      </div>
+
+      <footer class="status-bar" id="status-bar">
+        <span id="status-selection">0 selected</span>
+        <span id="status-coords">x: 0, y: 0</span>
+        <span id="status-mode">Select mode</span>
+        <span class="status-spacer"></span>
+        <span id="status-project">Untitled Topology</span>
+      </footer>
+    </div>
+
+    <div id="context-menu" class="context-menu" hidden></div>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

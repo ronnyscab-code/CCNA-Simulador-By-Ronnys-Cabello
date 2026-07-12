@@ -1,0 +1,107 @@
+/**
+ * Base layout and reset. Component-specific styling lives in editor.css.
+ */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  color: var(--color-text);
+  background: var(--color-bg);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+#app {
+  display: grid;
+  grid-template-rows: var(--toolbar-height) 1fr var(--status-bar-height);
+  height: 100vh;
+  width: 100vw;
+}
+
+.app-body {
+  display: grid;
+  grid-template-columns: var(--palette-width) 1fr;
+  min-height: 0;
+}
+
+.canvas-container {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-canvas-bg);
+}
+
+#canvas-root {
+  display: block;
+  cursor: default;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+  line-height: 1.6;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--color-surface);
+  border-color: var(--color-accent);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn[aria-pressed='true'] {
+  background: var(--color-accent-muted);
+  border-color: var(--color-accent);
+  color: var(--color-accent-hover);
+}
+
+.icon-btn {
+  width: 32px;
+  padding: var(--space-1);
+  text-align: center;
+  font-size: var(--font-size-lg);
+}

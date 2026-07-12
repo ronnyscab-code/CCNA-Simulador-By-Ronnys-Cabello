@@ -1,0 +1,39 @@
+{
+  "name": "openccna-simulator",
+  "version": "0.1.0",
+  "description": "A free, open-source, browser-based CCNA network simulator. No backend, no frameworks, no build step.",
+  "type": "module",
+  "license": "MIT",
+  "private": false,
+  "author": "OpenCCNA Simulator Contributors",
+  "homepage": "https://github.com/openccna/openccna-simulator",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openccna/openccna-simulator.git"
+  },
+  "keywords": [
+    "ccna",
+    "networking",
+    "simulator",
+    "cisco",
+    "packet-tracer",
+    "education",
+    "svg",
+    "canvas"
+  ],
+  "scripts": {
+    "dev": "npx --yes serve . -l 5173",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "eslint": "^9.9.0",
+    "prettier": "^3.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
