@@ -7,7 +7,7 @@ functional and tested before the next one begins.
       Infinite canvas, pan/zoom, grid/snap, drag & drop, selection, cabling,
       rename/duplicate/delete, copy/paste, undo/redo, JSON export/import,
       localStorage/IndexedDB persistence.
-- [ ] **v0.2 — Devices**
+- [x] **v0.2 — Devices**
       Full `Device` class hierarchy (`Router`, `Switch`, `PC`, `Server`,
       `AccessPoint`, `Firewall`, ...), interfaces, MAC addresses, IP
       configuration, device state, properties panel in the UI.

@@ -1,10 +1,21 @@
 # devices/
 
-**Status:** empty — lands in **v0.2** (see [../docs/ROADMAP.md](../docs/ROADMAP.md)).
+**Status:** implemented in **v0.2** (see [../docs/ROADMAP.md](../docs/ROADMAP.md)).
 
-Will hold the `Device` base class and its subclasses (`Router`, `Switch`,
-`PC`, `Laptop`, `Server`, `Firewall`, `AccessPoint`, `Cloud`, `Printer`),
-each carrying hostname, interfaces, MAC/IP addressing, and device state.
-This upgrades the minimal `topology/Node.js` placeholder used by the v0.1
-editor into a real, simulatable device model. Must stay DOM-free — see
-[../docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md).
+The logical device layer. Pure data + behavior, no DOM.
+
+- `net-utils.js` — MAC generation/validation and IPv4 math (int/mask/prefix
+  conversion, network/broadcast/same-subnet).
+- `NetworkInterface.js` — one port: IOS-style name, MAC, IPv4 address/mask,
+  admin state, switchport settings.
+- `Device.js` — base class: hostname, interfaces, capabilities, config
+  state, IOS interface-name expansion.
+- `Router.js`, `Switch.js`, `PC.js`, `Laptop.js`, `Server.js`,
+  `Firewall.js`, `AccessPoint.js`, `Cloud.js`, `Printer.js` — concrete
+  device types with default interface layouts.
+- `DeviceFactory.js` — the one registry mapping a type key to its class,
+  used for both creation and deserialization.
+
+A topology `Node` (`../topology/Node.js`) owns one `Device`. The CLI (v0.3)
+and packet engine (v0.4+) program against `Device`/`NetworkInterface`, never
+the concrete subclasses.

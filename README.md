@@ -10,11 +10,13 @@ Runs 100% in the browser. No backend, no build step, no account.
 
 ## Status
 
-**v0.1 — Topology Editor** (in progress). See [docs/ROADMAP.md](docs/ROADMAP.md)
+**v0.2 — Device model** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
 for the full version plan through v1.0, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 for how the codebase is organized.
 
-## Features (v0.1)
+## Features
+
+**Editor (v0.1)**
 
 - Infinite canvas with pan (middle-mouse drag) and zoom (mouse wheel).
 - Grid with snap-to-grid.
@@ -27,6 +29,15 @@ for how the codebase is organized.
 - Full undo/redo.
 - Export/import the topology as JSON.
 - Autosave to `localStorage`; named projects saved in `IndexedDB`.
+
+**Devices (v0.2)**
+
+- Real device model behind every node: interfaces with IOS-style names,
+  MAC addresses, IPv4 addressing, and admin state.
+- Properties panel to configure hostname, per-interface IP/mask/enabled,
+  and endpoint default gateway — every edit undoable.
+- Cables auto-assign a free interface on each end; the panel shows each
+  port's connected neighbor.
 
 ## Getting started
 

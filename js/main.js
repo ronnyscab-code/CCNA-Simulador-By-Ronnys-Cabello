@@ -17,6 +17,7 @@ import { CanvasManager } from '../ui/CanvasManager.js';
 import { CanvasInteractions } from '../ui/CanvasInteractions.js';
 import { Toolbar } from '../ui/Toolbar.js';
 import { ContextMenu } from '../ui/ContextMenu.js';
+import { PropertiesPanel } from '../ui/PropertiesPanel.js';
 
 const AUTOSAVE_TOPOLOGY_EVENTS = [
   'nodeAdded',
@@ -63,6 +64,19 @@ function bootstrap() {
   });
 
   new Toolbar({ topology, camera, history, storage, canvasManager });
+  new PropertiesPanel({ topology, selection, history, canvasManager });
+
+  // Surface transient engine messages (e.g. "no free interface") in the
+  // status bar's mode slot for a few seconds.
+  const statusMode = document.getElementById('status-mode');
+  canvasManager.addEventListener('notify', (event) => {
+    const previous = statusMode.textContent;
+    statusMode.textContent = event.detail.message;
+    setTimeout(() => {
+      statusMode.textContent = canvasManager.connectMode ? 'Connect mode' : 'Select mode';
+      if (statusMode.textContent === '') statusMode.textContent = previous;
+    }, 2500);
+  });
 
   restoreAutosave(topology, storage);
   wireAutosave(topology, storage);

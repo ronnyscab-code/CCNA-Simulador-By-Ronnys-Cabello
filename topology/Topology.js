@@ -177,6 +177,34 @@ export class Topology extends EventTarget {
     return this.getEdgesForNode(nodeIdA).some((edge) => edge.connectsTo(nodeIdB));
   }
 
+  /**
+   * Returns the set of interface names on a node that are already occupied
+   * by a cable — used to pick a free port when a new cable is drawn.
+   * @param {string} nodeId
+   * @returns {Set<string>}
+   */
+  getUsedInterfaceNames(nodeId) {
+    const used = new Set();
+    for (const edge of this.getEdgesForNode(nodeId)) {
+      if (edge.sourceNodeId === nodeId && edge.sourcePort) used.add(edge.sourcePort);
+      if (edge.targetNodeId === nodeId && edge.targetPort) used.add(edge.targetPort);
+    }
+    return used;
+  }
+
+  /**
+   * Returns the interface name a cable uses on a given endpoint node, or
+   * null (e.g. for legacy edges saved before ports were tracked).
+   * @param {Edge} edge
+   * @param {string} nodeId
+   * @returns {string|null}
+   */
+  portForNode(edge, nodeId) {
+    if (edge.sourceNodeId === nodeId) return edge.sourcePort;
+    if (edge.targetNodeId === nodeId) return edge.targetPort;
+    return null;
+  }
+
   // --- Whole-topology operations ----------------------------------------
 
   /**

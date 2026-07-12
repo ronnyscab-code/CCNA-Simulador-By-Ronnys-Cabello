@@ -244,7 +244,9 @@ export class CanvasManager extends EventTarget {
     const commands = [];
     const newIds = [];
     for (const data of this.clipboard) {
-      const node = new Node({
+      // Hydrate through Node.fromJSON so the logical Device (with methods) is
+      // rebuilt, not left as a raw plain object, then re-key and offset it.
+      const node = Node.fromJSON({
         ...data,
         id: this.topology.generateId(),
         x: data.x + GRID_SIZE,
@@ -335,15 +337,53 @@ export class CanvasManager extends EventTarget {
       return;
     }
 
+    // Auto-assign a free interface on each endpoint, mirroring how you pick
+    // ports when patching real gear. If either device has no free port, the
+    // cable is refused (and the tool disarmed) rather than silently created.
+    const sourcePort = this._firstFreePort(this.connectSourceId);
+    const targetPort = this._firstFreePort(nodeId);
+    if (sourcePort === undefined || targetPort === undefined) {
+      this._notify('No free interface available on one of the devices.');
+      this.cancelConnect();
+      return;
+    }
+
     const edge = new Edge({
       id: this.topology.generateId(),
       sourceNodeId: this.connectSourceId,
       targetNodeId: nodeId,
+      sourcePort,
+      targetPort,
     });
     this.history.execute(new AddEdgeCommand(this.topology, edge));
     this.connectSourceId = null;
     this.pendingEdgeToPoint = null;
     this.render();
+  }
+
+  /**
+   * Finds the name of the first unused interface on a node. Returns null for
+   * devices without a modeled interface list (e.g. legacy/unknown types), so
+   * cabling them still works, or `undefined` when every port is taken.
+   * @param {string} nodeId
+   * @returns {string|null|undefined}
+   */
+  _firstFreePort(nodeId) {
+    const node = this.topology.getNode(nodeId);
+    if (!node || !node.device || node.device.interfaces.length === 0) return null;
+    const used = this.topology.getUsedInterfaceNames(nodeId);
+    const iface = node.device.firstFreeInterface(used);
+    return iface ? iface.name : undefined;
+  }
+
+  /**
+   * Surfaces a transient message to the user. Emitted as an event so the UI
+   * shell decides how to present it (status bar for now); keeps this class
+   * free of direct DOM/`alert` calls.
+   * @param {string} message
+   */
+  _notify(message) {
+    this.dispatchEvent(new CustomEvent('notify', { detail: { message } }));
   }
 
   /**

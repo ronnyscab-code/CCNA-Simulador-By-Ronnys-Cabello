@@ -57,6 +57,7 @@
   --toolbar-height: 48px;
   --status-bar-height: 28px;
   --palette-width: 168px;
+  --properties-width: 264px;
 
   /* Motion */
   --transition-fast: 120ms ease;

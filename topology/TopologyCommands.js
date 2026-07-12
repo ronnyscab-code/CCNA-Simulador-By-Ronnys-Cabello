@@ -119,6 +119,91 @@ export class RenameNodeCommand {
 }
 
 /**
+ * Applies a set of field changes to one interface of a node's device
+ * (e.g. IP address, mask, admin state, description), capturing the previous
+ * values so the change can be undone. Dispatches a `nodeUpdated` event via
+ * `Topology#updateNode` so the UI refreshes.
+ */
+export class ConfigureInterfaceCommand {
+  /**
+   * @param {import('./Topology.js').Topology} topology
+   * @param {string} nodeId
+   * @param {string} interfaceName
+   * @param {object} changes - Partial interface fields to apply.
+   */
+  constructor(topology, nodeId, interfaceName, changes) {
+    this.topology = topology;
+    this.nodeId = nodeId;
+    this.interfaceName = interfaceName;
+    this.changes = changes;
+    this.previous = null;
+  }
+
+  _iface() {
+    const node = this.topology.getNode(this.nodeId);
+    if (!node || !node.device) {
+      throw new Error(`ConfigureInterfaceCommand: no device on node ${this.nodeId}`);
+    }
+    const iface = node.device.getInterface(this.interfaceName);
+    if (!iface) {
+      throw new Error(`ConfigureInterfaceCommand: no interface ${this.interfaceName}`);
+    }
+    return iface;
+  }
+
+  execute() {
+    const iface = this._iface();
+    this.previous = {};
+    for (const key of Object.keys(this.changes)) {
+      this.previous[key] = iface[key];
+    }
+    Object.assign(iface, this.changes);
+    this.topology.updateNode(this.nodeId, {});
+  }
+
+  undo() {
+    const iface = this._iface();
+    Object.assign(iface, this.previous);
+    this.topology.updateNode(this.nodeId, {});
+  }
+}
+
+/**
+ * Sets a scalar property on a node's device (e.g. `defaultGateway`,
+ * `ssid`), capturing the old value for undo.
+ */
+export class SetDevicePropertyCommand {
+  /**
+   * @param {import('./Topology.js').Topology} topology
+   * @param {string} nodeId
+   * @param {string} property
+   * @param {*} value
+   */
+  constructor(topology, nodeId, property, value) {
+    this.topology = topology;
+    this.nodeId = nodeId;
+    this.property = property;
+    this.value = value;
+    this.previous = undefined;
+  }
+
+  execute() {
+    const node = this.topology.getNode(this.nodeId);
+    if (!node || !node.device) return;
+    this.previous = node.device[this.property];
+    node.device[this.property] = this.value;
+    this.topology.updateNode(this.nodeId, {});
+  }
+
+  undo() {
+    const node = this.topology.getNode(this.nodeId);
+    if (!node || !node.device) return;
+    node.device[this.property] = this.previous;
+    this.topology.updateNode(this.nodeId, {});
+  }
+}
+
+/**
  * Adds a single cable between two existing nodes.
  */
 export class AddEdgeCommand {
