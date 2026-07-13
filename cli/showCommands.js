@@ -49,7 +49,7 @@ export function registerShowCommands(tree) {
 
   tree.add('show ip route', (session) => renderIpRoute(session.device));
 
-  tree.add('show spanning-tree', (session) => renderSpanningTree(session.device));
+  tree.add('show spanning-tree', (session) => renderSpanningTree(session));
 
   tree.add('show access-lists', () => '');
 
@@ -162,21 +162,49 @@ function renderIpRoute(device) {
 }
 
 /**
- * @param {import('../devices/Device.js').Device} device
+ * `show spanning-tree` — reflects the engine's computed tree: whether this
+ * bridge is root, and the role/state of each inter-switch port.
+ * @param {import('./CliSession.js').CliSession} session
  * @returns {string}
  */
-function renderSpanningTree(device) {
+function renderSpanningTree(session) {
+  const { device, node } = session;
   if (!device.capabilities.switching) {
     return '% Spanning tree is only relevant on switches.';
   }
-  return [
-    'VLAN0001',
-    '  Spanning tree enabled protocol rstp',
-    '  Root ID    Priority    32769',
+
+  const header = ['VLAN0001', '  Spanning tree enabled protocol rstp'];
+  const columns = [
     '',
     'Interface           Role Sts Cost      Prio.Nbr Type',
     '------------------- ---- --- --------- -------- --------------------------------',
-  ].join('\n');
+  ];
+
+  const engine = session.packetEngine;
+  if (!engine) return [...header, ...columns].join('\n');
+
+  const tree = engine.spanningTree();
+  const isRoot = tree.rootId === node.id;
+  const priority = device.config.bridgePriority ?? 32768;
+  header.push(
+    `  Root ID    Priority    ${isRoot ? priority : priority}`,
+    isRoot ? '             This bridge is the root' : '',
+    `  Bridge ID  Priority    ${priority}`,
+  );
+
+  const rows = [];
+  for (const iface of device.interfaces) {
+    const entry = tree.portStates.get(`${node.id}|${iface.name}`);
+    if (!entry) continue;
+    rows.push(
+      `${pad(shortName(iface.name), 20)}${pad(entry.role, 5)}${pad(entry.state, 4)}${pad(
+        String(entry.cost),
+        10,
+      )}128.1     P2p`,
+    );
+  }
+
+  return [...header.filter(Boolean), ...columns, ...rows].join('\n');
 }
 
 /**

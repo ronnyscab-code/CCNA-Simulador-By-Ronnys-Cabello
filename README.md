@@ -10,7 +10,7 @@ Runs 100% in the browser. No backend, no build step, no account.
 
 ## Status
 
-**v0.6 — Routing** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
+**v0.7 — VLANs, trunking & STP** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
 for the full version plan through v1.0, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 for how the codebase is organized.
 
@@ -71,6 +71,13 @@ for how the codebase is organized.
   match); hosts follow their default gateway. TTL decrements per hop.
 - `ping` reaches hosts several subnets and routers away, and the packet
   animates along the full router path.
+
+**VLANs, trunking & STP (v0.7)**
+
+- VLANs isolate traffic across trunked switches; `switchport trunk allowed vlan`
+  really prunes VLANs off a trunk.
+- Spanning tree elects a root bridge and blocks redundant links so loops
+  can't form; `show spanning-tree` shows the port roles and states.
 
 ## Getting started
 

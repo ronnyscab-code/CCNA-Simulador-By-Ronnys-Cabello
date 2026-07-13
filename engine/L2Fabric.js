@@ -52,11 +52,18 @@ export class L2Fabric {
    * Finds a layer-2 path (list of node ids) from `srcId` to `dstId`, passing
    * only through transparent bridges in between. Returns null if the two are
    * not in the same broadcast domain.
+   *
+   * When `vlan` is given, every switch port along the way must carry that
+   * VLAN (an access port in that VLAN, or a trunk allowing it) — this is what
+   * makes VLANs isolate traffic across trunked switches. When `blockedPorts`
+   * is given, spanning-tree-blocked ports are skipped, so redundant links
+   * don't produce looping paths.
    * @param {string} srcId
    * @param {string} dstId
+   * @param {{vlan?: number|null, blockedPorts?: Set<string>|null}} [options]
    * @returns {string[]|null}
    */
-  findPath(srcId, dstId) {
+  findPath(srcId, dstId, { vlan = null, blockedPorts = null } = {}) {
     if (srcId === dstId) return [srcId];
 
     const queue = [[srcId]];
@@ -66,8 +73,10 @@ export class L2Fabric {
       const path = queue.shift();
       const current = path[path.length - 1];
 
-      for (const { nodeId: nextId } of this.neighbors(current)) {
+      for (const edge of this.topology.getEdgesForNode(current)) {
+        const nextId = edge.otherNodeId(current);
         if (visited.has(nextId)) continue;
+        if (!this._edgeUsable(edge, vlan, blockedPorts)) continue;
 
         if (nextId === dstId) {
           return [...path, nextId];
@@ -84,6 +93,46 @@ export class L2Fabric {
     }
 
     return null;
+  }
+
+  /**
+   * Whether a frame (optionally tagged for `vlan`) may cross an edge: each
+   * switch endpoint's port must carry the VLAN and must not be STP-blocked.
+   * Non-switch bridges (cloud, AP) and endpoints impose no VLAN constraint.
+   * @param {import('../topology/Edge.js').Edge} edge
+   * @param {number|null} vlan
+   * @param {Set<string>|null} blockedPorts
+   * @returns {boolean}
+   */
+  _edgeUsable(edge, vlan, blockedPorts) {
+    for (const nodeId of [edge.sourceNodeId, edge.targetNodeId]) {
+      const node = this.topology.getNode(nodeId);
+      if (!node || node.deviceType !== 'switch') continue;
+      const port = this.topology.portForNode(edge, nodeId);
+      if (!port) continue;
+      if (blockedPorts && blockedPorts.has(`${nodeId}|${port}`)) return false;
+      if (vlan !== null && !L2Fabric.portCarriesVlan(node.device.getInterface(port), vlan)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Whether a switch port carries a VLAN: an access port must be in that
+   * VLAN; a trunk must allow it (an empty/unset allow-list means "all").
+   * @param {import('../devices/NetworkInterface.js').NetworkInterface|undefined} iface
+   * @param {number} vlan
+   * @returns {boolean}
+   */
+  static portCarriesVlan(iface, vlan) {
+    if (!iface) return true;
+    if (iface.switchportMode === 'trunk') {
+      const allowed = iface.trunkAllowedVlans;
+      return !allowed || allowed.length === 0 || allowed.includes(vlan);
+    }
+    // Access (or unset) port.
+    return (iface.accessVlan ?? 1) === vlan;
   }
 
   /**

@@ -25,6 +25,7 @@ import { routeLookup } from '../protocols/routing.js';
 import { DEFAULT_TTL } from '../protocols/ipv4.js';
 import { L2Fabric } from './L2Fabric.js';
 import { MacTable } from './MacTable.js';
+import { computeSpanningTree } from './SpanningTree.js';
 
 /** @enum {string} */
 export const PingReason = Object.freeze({
@@ -70,6 +71,17 @@ export class PacketEngine {
   }
 
   /**
+   * The current spanning tree over the switched topology. Recomputed on
+   * demand (topologies are small) so it always reflects the latest cabling
+   * and bridge priorities; consumed both here (to skip blocked ports) and by
+   * `show spanning-tree`.
+   * @returns {import('./SpanningTree.js').SpanningTreeResult}
+   */
+  spanningTree() {
+    return computeSpanningTree(this.topology);
+  }
+
+  /**
    * Clears all dynamic state (ARP caches, MAC tables). Called on `reload`.
    */
   reset() {
@@ -93,6 +105,10 @@ export class PacketEngine {
       return fail(PingReason.NO_SOURCE_IP);
     }
 
+    // Spanning tree, computed once for this ping, so redundant links between
+    // switches don't create looping layer-2 paths.
+    const blockedPorts = this.spanningTree().blockedPorts;
+
     // Walk the packet hop by hop through routers. Each iteration makes one
     // forwarding decision and delivers the frame across one layer-2 segment
     // to the next hop (a router) or the final destination.
@@ -111,7 +127,7 @@ export class PacketEngine {
         return fail(current === srcNode ? PingReason.DIFFERENT_SUBNET : PingReason.NO_ROUTE);
       }
 
-      const segment = this._deliverSegment(current.id, decision.nextHopIp);
+      const segment = this._deliverSegment(current.id, decision.nextHopIp, blockedPorts);
       if (segment.reason) return fail(segment.reason);
 
       // Learn MACs on switches within this layer-2 segment.
@@ -175,25 +191,28 @@ export class PacketEngine {
    * interface, and the frame's VLAN — or a failure reason.
    * @param {string} fromNodeId
    * @param {string} targetIp
+   * @param {Set<string>|null} [blockedPorts] - STP-blocked `nodeId|port` keys.
    * @returns {{path: string[], ownerNode: object, targetIface: object, vlan: number}|{reason: string}}
    */
-  _deliverSegment(fromNodeId, targetIp) {
+  _deliverSegment(fromNodeId, targetIp, blockedPorts = null) {
     const ownerNode = this._ownerOf(targetIp);
     if (!ownerNode) return { reason: PingReason.UNREACHABLE_ARP };
 
-    const path = this.fabric.findPath(fromNodeId, ownerNode.id);
-    if (!path) return { reason: PingReason.NOT_CONNECTED };
-
+    // The frame's VLAN is set by the ingress access port (host or router side).
     const fromVlan = this.fabric.hostAccessVlan(fromNodeId);
     const toVlan = this.fabric.hostAccessVlan(ownerNode.id);
     if (fromVlan !== null && toVlan !== null && fromVlan !== toVlan) {
       return { reason: PingReason.DIFFERENT_VLAN };
     }
+    const vlan = fromVlan ?? toVlan ?? null;
+
+    const path = this.fabric.findPath(fromNodeId, ownerNode.id, { vlan, blockedPorts });
+    if (!path) return { reason: PingReason.NOT_CONNECTED };
 
     const targetIface = ownerNode.device.interfaces.find(
       (i) => i.enabled && i.ipAddress === targetIp,
     );
-    return { path, ownerNode, targetIface, vlan: fromVlan ?? toVlan ?? 1 };
+    return { path, ownerNode, targetIface, vlan: vlan ?? 1 };
   }
 
   /**

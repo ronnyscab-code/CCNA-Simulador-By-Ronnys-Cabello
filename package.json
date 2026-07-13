@@ -1,6 +1,6 @@
 {
   "name": "openccna-simulator",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "A free, open-source, browser-based CCNA network simulator. No backend, no frameworks, no build step.",
   "type": "module",
   "license": "MIT",

@@ -8,6 +8,24 @@ so minor bumps may include breaking changes).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-07-13
+
+### Added — VLANs, trunking & spanning tree
+
+- Trunk-aware, VLAN-constrained layer-2 delivery: a frame's VLAN (set by its
+  ingress access port) now propagates across multiple switches only over
+  trunks that allow it. `L2Fabric.findPath` takes a `vlan` and refuses any
+  switch port that doesn't carry it (access mismatch, or trunk not allowing
+  the VLAN) — so `switchport trunk allowed vlan` actually prunes traffic.
+- `engine/SpanningTree.js` — a Common Spanning Tree: root-bridge election by
+  bridge ID, root-path-cost by link speed, and root/designated/blocking port
+  roles. Redundant links are blocked so loops (e.g. a triangle of switches)
+  can't produce a circulating or looping path.
+- `L2Fabric.findPath` skips STP-blocked ports; the engine computes the tree
+  once per ping.
+- `show spanning-tree` now reflects the computed tree: which bridge is root,
+  and each port's role (Root/Desg/Altn) and state (FWD/BLK).
+
 ## [0.6.0] - 2026-07-12
 
 ### Added — Routing
