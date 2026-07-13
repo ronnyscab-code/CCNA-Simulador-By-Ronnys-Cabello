@@ -61,13 +61,19 @@ export class DeviceFactory {
   }
 
   /**
-   * Rehydrates a device from serialized data (`Device#toJSON`).
+   * Rehydrates a device from serialized data (`Device#toJSON`). Concrete
+   * subclasses restore their own interfaces and type-specific fields; the
+   * base-level bags (`config`, `startupConfig`) are restored here so every
+   * subclass doesn't have to repeat that logic.
    * @param {object} data
    * @returns {import('./Device.js').Device}
    */
   static fromJSON(data) {
     const Ctor = REGISTRY[data.type];
     if (!Ctor) throw new Error(`Unknown device type: ${data.type}`);
-    return Ctor.fromJSON(data);
+    const device = Ctor.fromJSON(data);
+    if (data.config) device.config = data.config;
+    if (data.startupConfig !== undefined) device.startupConfig = data.startupConfig;
+    return device;
   }
 }

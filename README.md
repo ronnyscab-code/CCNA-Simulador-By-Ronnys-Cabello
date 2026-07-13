@@ -10,7 +10,7 @@ Runs 100% in the browser. No backend, no build step, no account.
 
 ## Status
 
-**v0.2 — Device model** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
+**v0.3 — Cisco CLI** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
 for the full version plan through v1.0, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 for how the codebase is organized.
 
@@ -38,6 +38,17 @@ for how the codebase is organized.
   and endpoint default gateway — every edit undoable.
 - Cables auto-assign a free interface on each end; the panel shows each
   port's connected neighbor.
+
+**CLI (v0.3)**
+
+- Modal, IOS-style command line per device (right-click → Open CLI, the
+  properties-panel button, or Enter on a selected device).
+- Minimum-unique abbreviation (`conf t`, `sh ip int br`), Tab / `?`
+  completion, command history, and Cisco-style error messages.
+- Configuration (`hostname`, `interface`, `ip address`, `switchport`,
+  `vlan`, `ip route`, `router ospf`, ...) mutates the live device model and
+  reflects immediately on the canvas; `show` commands render running-config,
+  interface briefs, CDP neighbors (from the cabling), routes, and more.
 
 ## Getting started
 

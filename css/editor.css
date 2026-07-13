@@ -333,6 +333,12 @@
   text-transform: capitalize;
 }
 
+.prop-cli-btn {
+  display: block;
+  width: 100%;
+  margin-bottom: var(--space-3);
+}
+
 .iface-card {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);

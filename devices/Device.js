@@ -43,6 +43,17 @@ export class Device {
     };
     // Populated by the CLI in v0.3 (`copy running-config startup-config`).
     this.startupConfig = null;
+    // Non-interface configuration written by the CLI: VLAN database, static
+    // routes, OSPF process, line settings. Kept in one bag so persistence
+    // and cloning pick it up automatically (see DeviceFactory.fromJSON).
+    this.config = Device.defaultConfig();
+  }
+
+  /**
+   * @returns {{vlans: object, staticRoutes: object[], ospf: object|null, lines: object}}
+   */
+  static defaultConfig() {
+    return { vlans: {}, staticRoutes: [], ospf: null, lines: {} };
   }
 
   /**
@@ -118,6 +129,7 @@ export class Device {
       type: this.type,
       capabilities: this.capabilities,
       startupConfig: this.startupConfig,
+      config: this.config,
       interfaces: this.interfaces.map((iface) => iface.toJSON()),
     };
   }

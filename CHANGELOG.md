@@ -8,6 +8,34 @@ so minor bumps may include breaking changes).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-12
+
+### Added — Cisco-style CLI
+
+- Modal IOS-like CLI under `cli/`: user EXEC, privileged EXEC, and the
+  `config`, `config-if`, `config-vlan`, `config-line`, `config-router`
+  submodes with correct prompts and `exit`/`end` transitions.
+- `CommandTree` parser with minimum-unique-abbreviation (`conf t`,
+  `sh ip int br`), Tab/`?` completion, and IOS-style error messages
+  (`% Ambiguous command`, `% Incomplete command`, `^ % Invalid input`).
+- Commands: `enable`/`disable`, `configure terminal`, `hostname`,
+  `interface`, `description`, `shutdown`/`no shutdown`, `ip address`,
+  `switchport mode/access/trunk`, `vlan`/`name`, `line`, `router ospf`,
+  `network`, `ip route`, `copy running-config startup-config`,
+  `write memory`, `erase startup-config`, `reload`, `ping`, `traceroute`.
+- `show` commands: `running-config`, `startup-config`, `interfaces`,
+  `ip interface brief`, `vlan brief`, `mac address-table`, `arp`,
+  `cdp neighbors` (derived live from the cabling), `ip route` (connected +
+  static), `spanning-tree`, `access-lists`, `ip ospf neighbor/interface`,
+  `version`. Commands needing runtime tables render well-formed empty output
+  today and fill in as the engine grows (v0.4+).
+- `ui/Terminal.js` / `ui/TerminalManager.js`: draggable, resizable terminal
+  windows (one per device) with command history and Tab completion. Open via
+  right-click → Open CLI, the properties-panel button, or Enter on a
+  selected device. CLI config changes update the canvas label and autosave.
+- Device gains a `config` bag (VLAN database, static routes, OSPF, lines),
+  serialized with the topology.
+
 ## [0.2.0] - 2026-07-12
 
 ### Added — Device model

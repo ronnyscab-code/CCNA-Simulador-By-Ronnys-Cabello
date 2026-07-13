@@ -22,6 +22,7 @@ export class CanvasInteractions {
     this.canvasManager = canvasManager;
     this.container = canvasManager.container;
     this.onContextMenu = options.onContextMenu ?? null;
+    this.onActivateNode = options.onActivateNode ?? null;
     this.inlineEditor = new InlineNodeEditor(this.container);
 
     this.isPanning = false;
@@ -261,7 +262,13 @@ export class CanvasInteractions {
     const key = event.key.toLowerCase();
     const cm = this.canvasManager;
 
-    if (key === 'delete' || key === 'backspace') {
+    if (key === 'enter') {
+      const ids = cm.selection.getSelectedNodeIds();
+      if (ids.length === 1 && this.onActivateNode) {
+        event.preventDefault();
+        this.onActivateNode(ids[0]);
+      }
+    } else if (key === 'delete' || key === 'backspace') {
       event.preventDefault();
       cm.deleteSelection();
     } else if (meta && key === 'z' && event.shiftKey) {

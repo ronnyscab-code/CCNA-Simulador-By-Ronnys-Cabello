@@ -18,6 +18,7 @@ import { CanvasInteractions } from '../ui/CanvasInteractions.js';
 import { Toolbar } from '../ui/Toolbar.js';
 import { ContextMenu } from '../ui/ContextMenu.js';
 import { PropertiesPanel } from '../ui/PropertiesPanel.js';
+import { TerminalManager } from '../ui/TerminalManager.js';
 
 const AUTOSAVE_TOPOLOGY_EVENTS = [
   'nodeAdded',
@@ -47,8 +48,14 @@ function bootstrap() {
     history,
   });
 
+  const terminals = new TerminalManager({
+    topology,
+    layer: document.getElementById('terminal-layer'),
+  });
+
   const contextMenu = new ContextMenu(document.getElementById('context-menu'));
   const interactions = new CanvasInteractions(canvasManager, {
+    onActivateNode: (nodeId) => terminals.open(nodeId),
     onContextMenu: (type, id, clientX, clientY) =>
       showContextMenu({
         contextMenu,
@@ -56,6 +63,7 @@ function bootstrap() {
         topology,
         camera,
         interactions,
+        terminals,
         type,
         id,
         clientX,
@@ -64,7 +72,7 @@ function bootstrap() {
   });
 
   new Toolbar({ topology, camera, history, storage, canvasManager });
-  new PropertiesPanel({ topology, selection, history, canvasManager });
+  new PropertiesPanel({ topology, selection, history, canvasManager, terminals });
 
   // Surface transient engine messages (e.g. "no free interface") in the
   // status bar's mode slot for a few seconds.
@@ -110,16 +118,33 @@ function wireAutosave(topology, storage) {
  * @param {object} ctx
  */
 function showContextMenu(ctx) {
-  const { contextMenu, canvasManager, topology, camera, interactions, type, id, clientX, clientY } =
-    ctx;
+  const {
+    contextMenu,
+    canvasManager,
+    topology,
+    camera,
+    interactions,
+    terminals,
+    type,
+    id,
+    clientX,
+    clientY,
+  } = ctx;
 
   if (type === 'node') {
+    const node = topology.getNode(id);
+    const hasDevice = Boolean(node && node.device);
     contextMenu.show(clientX, clientY, [
+      {
+        label: 'Open CLI',
+        shortcut: 'Enter',
+        disabled: !hasDevice,
+        action: () => terminals.open(id),
+      },
       {
         label: 'Rename',
         shortcut: 'Dbl-click',
         action: () => {
-          const node = topology.getNode(id);
           if (!node) return;
           interactions.inlineEditor.begin(node, camera, (newHostname) =>
             canvasManager.renameNode(id, newHostname),

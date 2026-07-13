@@ -11,7 +11,7 @@ functional and tested before the next one begins.
       Full `Device` class hierarchy (`Router`, `Switch`, `PC`, `Server`,
       `AccessPoint`, `Firewall`, ...), interfaces, MAC addresses, IP
       configuration, device state, properties panel in the UI.
-- [ ] **v0.3 — CLI**
+- [x] **v0.3 — CLI**
       Cisco-style CLI parser and terminal UI: modes (`config`, `config-if`,
       `config-router`, `config-line`, `config-vlan`), command set, tab
       completion, command history, Cisco-style error messages.

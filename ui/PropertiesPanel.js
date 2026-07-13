@@ -27,11 +27,12 @@ export class PropertiesPanel {
    * @param {import('./HistoryManager.js').HistoryManager} deps.history
    * @param {import('./CanvasManager.js').CanvasManager} deps.canvasManager
    */
-  constructor({ topology, selection, history, canvasManager }) {
+  constructor({ topology, selection, history, canvasManager, terminals = null }) {
     this.topology = topology;
     this.selection = selection;
     this.history = history;
     this.canvasManager = canvasManager;
+    this.terminals = terminals;
 
     this.body = document.getElementById('properties-body');
 
@@ -87,6 +88,14 @@ export class PropertiesPanel {
     const chip = el('span', 'prop-device-type');
     chip.textContent = node.deviceType;
     group.appendChild(chip);
+
+    if (this.terminals) {
+      const cliBtn = el('button', 'btn prop-cli-btn');
+      cliBtn.type = 'button';
+      cliBtn.textContent = 'Open CLI';
+      cliBtn.addEventListener('click', () => this.terminals.open(node.id));
+      group.appendChild(cliBtn);
+    }
 
     const field = el('div', 'prop-field');
     const label = el('label');

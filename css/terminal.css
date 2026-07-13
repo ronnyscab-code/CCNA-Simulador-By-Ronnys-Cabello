@@ -1,0 +1,101 @@
+/**
+ * Terminal window styling. The layer is a full-viewport overlay that only
+ * catches pointer events on the actual windows, so the canvas underneath
+ * stays interactive.
+ */
+.terminal-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 900;
+}
+
+.terminal-window {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  width: 560px;
+  height: 380px;
+  display: flex;
+  flex-direction: column;
+  background: #0f1014;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  pointer-events: auto;
+  resize: both;
+  min-width: 320px;
+  min-height: 200px;
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  cursor: grab;
+  user-select: none;
+}
+
+.terminal-title {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.terminal-close {
+  appearance: none;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  padding: 0 var(--space-1);
+}
+
+.terminal-close:hover {
+  color: var(--color-danger);
+}
+
+.terminal-output {
+  flex: 1;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  overflow-y: auto;
+  font-family: var(--font-family-mono);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #d6f5d6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.terminal-input-row {
+  display: flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3) var(--space-2);
+  background: #0f1014;
+  border-top: 1px solid var(--color-border);
+}
+
+.terminal-prompt {
+  font-family: var(--font-family-mono);
+  font-size: 12.5px;
+  color: #8fd18f;
+  white-space: pre;
+}
+
+.terminal-input {
+  flex: 1;
+  appearance: none;
+  border: none;
+  background: none;
+  outline: none;
+  color: #d6f5d6;
+  font-family: var(--font-family-mono);
+  font-size: 12.5px;
+  padding: 0;
+}
