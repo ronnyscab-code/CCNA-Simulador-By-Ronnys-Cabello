@@ -20,8 +20,9 @@
  * single-broadcast-domain case end to end first.
  */
 
-import { sameSubnet } from '../devices/net-utils.js';
 import { ArpCache } from '../protocols/arp.js';
+import { routeLookup } from '../protocols/routing.js';
+import { DEFAULT_TTL } from '../protocols/ipv4.js';
 import { L2Fabric } from './L2Fabric.js';
 import { MacTable } from './MacTable.js';
 
@@ -33,6 +34,8 @@ export const PingReason = Object.freeze({
   DIFFERENT_VLAN: 'different-vlan',
   UNREACHABLE_ARP: 'unreachable-arp',
   NOT_CONNECTED: 'not-connected',
+  NO_ROUTE: 'no-route',
+  TTL_EXPIRED: 'ttl-expired',
 });
 
 export class PacketEngine {
@@ -86,61 +89,111 @@ export class PacketEngine {
     const fail = (reason) => ({ success: false, reason, rttMs: 0, targetMac: null, events });
 
     if (!srcNode || !srcNode.device) return fail(PingReason.NOT_CONNECTED);
-
-    const egress = this._egressInterface(srcNode.device, dstIp);
-    if (!egress) {
-      // No local subnet matches — with no L3 routing yet, this is unreachable.
-      const hasIp = srcNode.device.interfaces.some((i) => i.enabled && i.ipAddress);
-      return fail(hasIp ? PingReason.DIFFERENT_SUBNET : PingReason.NO_SOURCE_IP);
+    if (!srcNode.device.interfaces.some((i) => i.enabled && i.ipAddress)) {
+      return fail(PingReason.NO_SOURCE_IP);
     }
 
-    const dstNode = this._ownerOf(dstIp);
-    if (!dstNode) return fail(PingReason.UNREACHABLE_ARP);
+    // Walk the packet hop by hop through routers. Each iteration makes one
+    // forwarding decision and delivers the frame across one layer-2 segment
+    // to the next hop (a router) or the final destination.
+    const fullPath = [srcNodeId];
+    let firstSegment = null;
+    let firstHopIp = null;
+    let current = srcNode;
+    let ttl = DEFAULT_TTL;
+    const visited = new Set([srcNodeId]);
+    let dstIface = null;
 
-    const path = this.fabric.findPath(srcNodeId, dstNode.id);
-    if (!path) return fail(PingReason.NOT_CONNECTED);
+    // Prevent pathological loops even if TTL logic is bypassed.
+    for (let guard = 0; guard < 64; guard += 1) {
+      const decision = routeLookup(current.device, dstIp);
+      if (!decision) {
+        return fail(current === srcNode ? PingReason.DIFFERENT_SUBNET : PingReason.NO_ROUTE);
+      }
 
-    // VLAN segregation: two hosts reachable at the physical layer still can't
-    // talk if their switch access ports are in different VLANs.
-    const srcVlan = this.fabric.hostAccessVlan(srcNodeId);
-    const dstVlan = this.fabric.hostAccessVlan(dstNode.id);
-    if (srcVlan !== null && dstVlan !== null && srcVlan !== dstVlan) {
-      return fail(PingReason.DIFFERENT_VLAN);
+      const segment = this._deliverSegment(current.id, decision.nextHopIp);
+      if (segment.reason) return fail(segment.reason);
+
+      // Learn MACs on switches within this layer-2 segment.
+      this._learnAlongPath(
+        segment.path,
+        decision.egressIface.mac,
+        segment.targetIface.mac,
+        segment.vlan,
+      );
+
+      if (!firstSegment) {
+        firstSegment = segment.path;
+        firstHopIp = decision.nextHopIp;
+      }
+      for (let i = 1; i < segment.path.length; i += 1) fullPath.push(segment.path[i]);
+
+      if (decision.nextHopIp === dstIp) {
+        dstIface = segment.targetIface;
+        break;
+      }
+
+      // Move to the next-hop router.
+      const nextRouter = segment.ownerNode;
+      if (visited.has(nextRouter.id)) return fail(PingReason.NO_ROUTE);
+      visited.add(nextRouter.id);
+      ttl -= 1;
+      if (ttl <= 0) return fail(PingReason.TTL_EXPIRED);
+      current = nextRouter;
     }
-    const frameVlan = srcVlan ?? dstVlan ?? 1;
 
-    const dstIface = dstNode.device.interfaces.find((i) => i.enabled && i.ipAddress === dstIp);
-    const srcMac = egress.mac;
-    const dstMac = dstIface.mac;
+    if (!dstIface) return fail(PingReason.NO_ROUTE);
+
+    // ARP the first hop (host → gateway, or → destination when on-link) if
+    // it isn't already resolved in this device's cache.
     const srcCache = this.arpCacheFor(srcNodeId);
-    const dstCache = this.arpCacheFor(dstNode.id);
-
-    // Switches along the path learn both endpoints' MACs (source learned as
-    // the frame travels each direction). This populates `show mac
-    // address-table`.
-    this._learnAlongPath(path, srcMac, dstMac, frameVlan);
-
-    // ARP resolution (only if not already cached).
-    if (!srcCache.has(dstIp)) {
-      events.push({ kind: 'arp-request', path });
-      events.push({ kind: 'arp-reply', path: [...path].reverse() });
-      srcCache.set(dstIp, dstMac);
-      dstCache.set(egress.ipAddress, srcMac);
+    if (!srcCache.has(firstHopIp)) {
+      events.push({ kind: 'arp-request', path: firstSegment });
+      events.push({ kind: 'arp-reply', path: [...firstSegment].reverse() });
+      const firstHopOwner = this._ownerOf(firstHopIp);
+      const firstHopIface = firstHopOwner
+        ? firstHopOwner.device.interfaces.find((i) => i.enabled && i.ipAddress === firstHopIp)
+        : null;
+      if (firstHopIface) srcCache.set(firstHopIp, firstHopIface.mac);
     }
 
-    // ICMP echo request + reply.
-    events.push({ kind: 'icmp-request', path });
-    events.push({ kind: 'icmp-reply', path: [...path].reverse() });
+    events.push({ kind: 'icmp-request', path: fullPath });
+    events.push({ kind: 'icmp-reply', path: [...fullPath].reverse() });
 
-    // Round-trip time scales with the number of hops, for a bit of realism.
-    const hops = Math.max(1, path.length - 1);
     return {
       success: true,
       reason: PingReason.OK,
-      rttMs: hops,
+      rttMs: Math.max(1, fullPath.length - 1),
       targetMac: dstIface.mac,
       events,
     };
+  }
+
+  /**
+   * Delivers a frame across one layer-2 segment from `fromNodeId` to whoever
+   * owns `targetIp`, returning the node path, the owner node, its receiving
+   * interface, and the frame's VLAN — or a failure reason.
+   * @param {string} fromNodeId
+   * @param {string} targetIp
+   * @returns {{path: string[], ownerNode: object, targetIface: object, vlan: number}|{reason: string}}
+   */
+  _deliverSegment(fromNodeId, targetIp) {
+    const ownerNode = this._ownerOf(targetIp);
+    if (!ownerNode) return { reason: PingReason.UNREACHABLE_ARP };
+
+    const path = this.fabric.findPath(fromNodeId, ownerNode.id);
+    if (!path) return { reason: PingReason.NOT_CONNECTED };
+
+    const fromVlan = this.fabric.hostAccessVlan(fromNodeId);
+    const toVlan = this.fabric.hostAccessVlan(ownerNode.id);
+    if (fromVlan !== null && toVlan !== null && fromVlan !== toVlan) {
+      return { reason: PingReason.DIFFERENT_VLAN };
+    }
+
+    const targetIface = ownerNode.device.interfaces.find(
+      (i) => i.enabled && i.ipAddress === targetIp,
+    );
+    return { path, ownerNode, targetIface, vlan: fromVlan ?? toVlan ?? 1 };
   }
 
   /**
@@ -164,24 +217,6 @@ export class PacketEngine {
       if (portToSrc) table.learn(vlan, srcMac, portToSrc);
       if (portToDst) table.learn(vlan, dstMac, portToDst);
     }
-  }
-
-  /**
-   * The interface whose subnet contains `dstIp` (enabled and addressed).
-   * @param {import('../devices/Device.js').Device} device
-   * @param {string} dstIp
-   * @returns {import('../devices/NetworkInterface.js').NetworkInterface|null}
-   */
-  _egressInterface(device, dstIp) {
-    return (
-      device.interfaces.find(
-        (iface) =>
-          iface.enabled &&
-          iface.ipAddress &&
-          iface.subnetMask &&
-          sameSubnet(iface.ipAddress, dstIp, iface.subnetMask),
-      ) ?? null
-    );
   }
 
   /**

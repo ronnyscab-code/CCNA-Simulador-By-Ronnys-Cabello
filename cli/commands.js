@@ -129,6 +129,12 @@ function buildGlobalConfig() {
     session.notifyConfigChanged();
   });
 
+  tree.add('ip default-gateway <ip>', (session, args) => {
+    if (!isValidIpv4(args.ip)) return '% Invalid input detected.';
+    session.device.defaultGateway = args.ip;
+    session.notifyConfigChanged();
+  });
+
   tree.add('ip route <prefix> <mask> <nexthop>', (session, args) => {
     if (!isValidIpv4(args.prefix) || !isValidSubnetMask(args.mask) || !isValidIpv4(args.nexthop)) {
       return '% Invalid input detected.';

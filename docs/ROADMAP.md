@@ -21,7 +21,7 @@ functional and tested before the next one begins.
 - [x] **v0.5 — Switching**
       MAC address table, flooding, unicast/broadcast/multicast forwarding,
       VLAN-aware switching basics.
-- [ ] **v0.6 — Routing**
+- [x] **v0.6 — Routing**
       Routing table, static routing, ARP-based next-hop resolution, ICMP
       end-to-end connectivity across routers.
 - [ ] **v0.7 — VLAN**

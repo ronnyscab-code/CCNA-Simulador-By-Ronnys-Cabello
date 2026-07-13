@@ -10,7 +10,7 @@ Runs 100% in the browser. No backend, no build step, no account.
 
 ## Status
 
-**v0.5 — Switching** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
+**v0.6 — Routing** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
 for the full version plan through v1.0, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 for how the codebase is organized.
 
@@ -64,6 +64,13 @@ for how the codebase is organized.
   reflects what they've learned, on the right ports and VLANs.
 - Access-port VLANs segregate traffic: same VLAN reaches, different VLAN
   doesn't — just like real gear.
+
+**Routing (v0.6)**
+
+- Routers forward hop by hop using connected + static routes (longest-prefix
+  match); hosts follow their default gateway. TTL decrements per hop.
+- `ping` reaches hosts several subnets and routers away, and the packet
+  animates along the full router path.
 
 ## Getting started
 

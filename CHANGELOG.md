@@ -8,6 +8,24 @@ so minor bumps may include breaking changes).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-07-12
+
+### Added — Routing
+
+- `protocols/routing.js` — the forwarding decision: longest-prefix match over
+  connected routes, static routes (`ip route`), and an endpoint's default
+  gateway (modeled as `0.0.0.0/0`), resolving the egress interface and
+  next-hop IP.
+- `PacketEngine.ping` rewritten as a unified hop-by-hop forwarder: at each
+  node it makes one routing decision and delivers the frame across one
+  layer-2 segment to the next hop, decrementing TTL per router hop, until the
+  packet reaches the destination. Same-subnet and switched delivery are now
+  the single-hop case of the same algorithm.
+- End-to-end pings across multiple routers via static routes now succeed and
+  animate along the full router path; new failure reasons `no-route` and
+  `ttl-expired`.
+- `ip default-gateway <ip>` CLI command.
+
 ## [0.5.0] - 2026-07-12
 
 ### Added — Switching
