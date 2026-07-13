@@ -67,7 +67,10 @@ function buildPrivilegedExec() {
     session.notifyConfigChanged();
     return 'Erasing the nvram filesystem...\n[OK]';
   });
-  tree.add('reload', () => 'System configuration reloaded. (Dynamic tables cleared.)');
+  tree.add('reload', (session) => {
+    session.packetEngine?.reset();
+    return 'System configuration reloaded. (Dynamic tables cleared.)';
+  });
   tree.add('ping <target>', (session, args) => pingCommand(session, args.target));
   tree.add('traceroute <target>', (session, args) => tracerouteCommand(session, args.target));
   tree.add('exit', (session) => {
@@ -295,23 +298,30 @@ function parseVlanList(list) {
 }
 
 /**
- * Naive reachability check for v0.3: succeeds if the target IP is configured
- * on any enabled interface anywhere in the topology and this device has a
- * source IP. Real hop-by-hop ICMP simulation (ARP, routing, TTL) arrives
- * with the packet engine in v0.4.
+ * `ping`, driven by the packet engine when one is attached to the session
+ * (the browser app always attaches one). The engine resolves ARP and
+ * delivers ICMP over the real layer-2 fabric, and returns an animation
+ * trace which we hand to the UI via `session.emitPackets`.
  * @param {import('./CliSession.js').CliSession} session
  * @param {string} target
  * @returns {string}
  */
 function pingCommand(session, target) {
   if (!isValidIpv4(target)) return `% Invalid IP address: ${target}`;
-  const sourceIp = firstConfiguredIp(session.device);
-  if (!sourceIp) return '% No source IP address configured on this device.';
+  if (!session.packetEngine) return '% Packet engine unavailable.';
 
-  const reachable = topologyHasEnabledIp(session.topology, target);
-  const marks = reachable ? '!!!!!' : '.....';
-  const rate = reachable ? '100 percent (5/5)' : '0 percent (0/5)';
-  const timing = reachable ? ', round-trip min/avg/max = 1/1/2 ms' : '';
+  const result = session.packetEngine.ping(session.node.id, target);
+  session.emitPackets(result.events);
+
+  if (result.reason === 'no-source-ip') {
+    return '% No source IP address configured on this device.';
+  }
+
+  const marks = result.success ? '!!!!!' : '.....';
+  const rate = result.success ? '100 percent (5/5)' : '0 percent (0/5)';
+  const timing = result.success
+    ? `, round-trip min/avg/max = ${result.rttMs}/${result.rttMs}/${result.rttMs + 1} ms`
+    : '';
   return [
     'Type escape sequence to abort.',
     `Sending 5, 100-byte ICMP Echos to ${target}, timeout is 2 seconds:`,
@@ -321,39 +331,25 @@ function pingCommand(session, target) {
 }
 
 /**
+ * `traceroute`, using the same engine. Full per-hop tracing (with TTL
+ * expiry) arrives with L3 routing in v0.6; within a single subnet the route
+ * is a single hop to the target.
  * @param {import('./CliSession.js').CliSession} session
  * @param {string} target
  * @returns {string}
  */
 function tracerouteCommand(session, target) {
   if (!isValidIpv4(target)) return `% Invalid IP address: ${target}`;
-  const reachable = topologyHasEnabledIp(session.topology, target);
+  if (!session.packetEngine) return '% Packet engine unavailable.';
+
+  const result = session.packetEngine.ping(session.node.id, target);
+  session.emitPackets(result.events);
+
   const lines = [`Tracing the route to ${target}`, ''];
-  if (reachable) {
-    lines.push(`  1 ${target}  1 ms  1 ms  1 ms`);
+  if (result.success) {
+    lines.push(`  1 ${target}  ${result.rttMs} ms  ${result.rttMs} ms  ${result.rttMs} ms`);
   } else {
     lines.push('  1  *  *  *', '  (destination unreachable)');
   }
   return lines.join('\n');
-}
-
-/**
- * @param {import('../devices/Device.js').Device} device
- * @returns {string|null}
- */
-function firstConfiguredIp(device) {
-  const iface = device.interfaces.find((i) => i.enabled && i.ipAddress);
-  return iface ? iface.ipAddress : null;
-}
-
-/**
- * @param {import('../topology/Topology.js').Topology} topology
- * @param {string} ip
- * @returns {boolean}
- */
-function topologyHasEnabledIp(topology, ip) {
-  return topology.getNodes().some((node) => {
-    if (!node.device) return false;
-    return node.device.interfaces.some((iface) => iface.enabled && iface.ipAddress === ip);
-  });
 }

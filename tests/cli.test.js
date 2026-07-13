@@ -6,6 +6,7 @@ import { Node } from '../topology/Node.js';
 import { Edge } from '../topology/Edge.js';
 import { CliSession } from '../cli/CliSession.js';
 import { CommandTree, ResolveError } from '../cli/CommandTree.js';
+import { PacketEngine } from '../engine/PacketEngine.js';
 
 function makeSession(deviceType = 'router', hostname = 'R1') {
   const topology = new Topology();
@@ -193,19 +194,29 @@ describe('CLI show commands', () => {
   });
 });
 
-describe('CLI reachability (naive, pre packet-engine)', () => {
-  test('ping succeeds when the target IP exists and is up', () => {
+describe('CLI ping via the packet engine', () => {
+  test('ping succeeds over a direct link and fails to an absent host', () => {
     const topology = new Topology();
     const a = new Node({ id: 'a', deviceType: 'router', hostname: 'A' });
     const b = new Node({ id: 'b', deviceType: 'router', hostname: 'B' });
     topology.addNode(a);
     topology.addNode(b);
+    topology.addEdge(
+      new Edge({
+        id: 'e1',
+        sourceNodeId: 'a',
+        targetNodeId: 'b',
+        sourcePort: 'GigabitEthernet0/0',
+        targetPort: 'GigabitEthernet0/0',
+      }),
+    );
     a.device.getInterface('GigabitEthernet0/0').setIp('10.0.0.1', '255.255.255.0');
     a.device.getInterface('GigabitEthernet0/0').enabled = true;
     b.device.getInterface('GigabitEthernet0/0').setIp('10.0.0.2', '255.255.255.0');
     b.device.getInterface('GigabitEthernet0/0').enabled = true;
 
-    const session = new CliSession({ node: a, topology });
+    const engine = new PacketEngine(topology);
+    const session = new CliSession({ node: a, topology, packetEngine: engine });
     session.execute('enable');
     assert.match(session.execute('ping 10.0.0.2'), /!!!!!/);
     assert.match(session.execute('ping 10.0.0.99'), /\.\.\.\.\./);

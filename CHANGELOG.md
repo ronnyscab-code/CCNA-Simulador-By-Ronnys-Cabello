@@ -8,6 +8,27 @@ so minor bumps may include breaking changes).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-12
+
+### Added — Packet engine
+
+- Protocol models under `protocols/`: `Frame` (Ethernet + EtherType +
+  optional 802.1Q tag), `IPv4Packet` (with TTL decrement/expiry),
+  `ArpMessage`/`ArpCache`, and `IcmpMessage` (echo request/reply).
+- `engine/L2Fabric.js` — layer-2 reachability: switches, access points, and
+  clouds relay frames transparently; routers/endpoints don't. Computes the
+  broadcast domain and the node path between two hosts.
+- `engine/PacketEngine.js` — simulates `ping` end to end: picks the egress
+  interface by subnet, resolves the destination MAC via ARP (request/reply,
+  cached per device), then exchanges ICMP echo. Returns a success/reason
+  result plus an animation trace, with clear failure reasons (no source IP,
+  different subnet, unreachable, not connected).
+- CLI `ping`/`traceroute` now run on the real engine and animate; `reload`
+  clears the ARP caches.
+- `ui/PacketAnimator.js` — Canvas overlay that animates packets (ARP amber,
+  ICMP blue/green) gliding along the cable path, re-projected through the
+  camera so they track the devices while panning/zooming.
+
 ## [0.3.0] - 2026-07-12
 
 ### Added — Cisco-style CLI

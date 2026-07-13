@@ -21,10 +21,14 @@ export class TerminalManager {
    * @param {object} deps
    * @param {import('../topology/Topology.js').Topology} deps.topology
    * @param {HTMLElement} deps.layer - Overlay container for terminal windows.
+   * @param {import('../engine/PacketEngine.js').PacketEngine} [deps.packetEngine]
+   * @param {(events: Array<{kind: string, path: string[]}>) => void} [deps.onPackets]
    */
-  constructor({ topology, layer }) {
+  constructor({ topology, layer, packetEngine = null, onPackets = () => {} }) {
     this.topology = topology;
     this.layer = layer;
+    this.packetEngine = packetEngine;
+    this.onPackets = onPackets;
     /** @type {Map<string, CliSession>} */
     this.sessions = new Map();
     /** @type {Map<string, Terminal>} */
@@ -51,6 +55,8 @@ export class TerminalManager {
       node,
       topology: this.topology,
       onConfigChange: () => this.topology.updateNode(nodeId, {}),
+      packetEngine: this.packetEngine,
+      onPackets: this.onPackets,
     });
     this.sessions.set(nodeId, session);
     return session;

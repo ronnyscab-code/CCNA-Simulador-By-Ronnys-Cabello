@@ -10,7 +10,7 @@ Runs 100% in the browser. No backend, no build step, no account.
 
 ## Status
 
-**v0.3 — Cisco CLI** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
+**v0.4 — Packet engine** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
 for the full version plan through v1.0, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 for how the codebase is organized.
 
@@ -49,6 +49,14 @@ for how the codebase is organized.
   `vlan`, `ip route`, `router ospf`, ...) mutates the live device model and
   reflects immediately on the canvas; `show` commands render running-config,
   interface briefs, CDP neighbors (from the cabling), routes, and more.
+
+**Packet engine (v0.4)**
+
+- `ping` and `traceroute` actually simulate: the engine picks an egress
+  interface by subnet, resolves the destination MAC with ARP, and exchanges
+  ICMP echo across the real layer-2 fabric (works through switches).
+- Packets animate along the cabling — ARP (amber) then ICMP (blue/green) —
+  tracking the devices as you pan and zoom.
 
 ## Getting started
 

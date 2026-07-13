@@ -23,12 +23,25 @@ export class CliSession {
    * @param {import('../topology/Topology.js').Topology} deps.topology
    * @param {() => void} [deps.onConfigChange] - Called after a command that
    *   mutates device config, so the UI can re-render / autosave.
+   * @param {import('../engine/PacketEngine.js').PacketEngine} [deps.packetEngine]
+   *   - Shared engine used by `ping`/`traceroute`; if omitted those commands
+   *   report that the engine is unavailable.
+   * @param {(events: Array<{kind: string, path: string[]}>) => void} [deps.onPackets]
+   *   - Called with the animation event trace a command produced.
    */
-  constructor({ node, topology, onConfigChange = () => {} }) {
+  constructor({
+    node,
+    topology,
+    onConfigChange = () => {},
+    packetEngine = null,
+    onPackets = () => {},
+  }) {
     this.node = node;
     this.device = node.device;
     this.topology = topology;
     this.onConfigChange = onConfigChange;
+    this.packetEngine = packetEngine;
+    this.onPackets = onPackets;
 
     /** @type {string[]} mode stack; last element is the current mode. */
     this.modeStack = [Mode.USER_EXEC];
@@ -140,6 +153,14 @@ export class CliSession {
    */
   notifyConfigChanged() {
     this.onConfigChange();
+  }
+
+  /**
+   * Hands a packet-animation event trace to the host app (the animator).
+   * @param {Array<{kind: string, path: string[]}>} events
+   */
+  emitPackets(events) {
+    if (events && events.length > 0) this.onPackets(events);
   }
 
   // --- Execution ---------------------------------------------------------

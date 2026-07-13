@@ -245,6 +245,14 @@
   flex: 1;
 }
 
+/* --- Packet animation overlay --- */
+.packet-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
 /* --- Connect mode cursor --- */
 .canvas-container.connect-mode-active #canvas-root {
   cursor: crosshair;

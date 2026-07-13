@@ -1,8 +1,14 @@
 # protocols/
 
-**Status:** empty — first implementations (ARP, ICMP) land in **v0.4**,
-with DHCP/DNS/NAT/ACL/OSPF/STP/HSRP/IPv6 arriving through v0.8 (see
-[../docs/ROADMAP.md](../docs/ROADMAP.md)).
+**Status:** first models land in **v0.4** (ARP, ICMP, IPv4, Ethernet); more
+protocols arrive through v0.8 (see [../docs/ROADMAP.md](../docs/ROADMAP.md)).
 
-Will hold one module per protocol, each operating purely on
-`devices/`/`topology/` data and the `engine/PacketEngine.js` — no DOM.
+DOM-free protocol data models, operated on by `engine/PacketEngine.js`.
+
+- `Frame.js` — layer-2 Ethernet frame (`EtherType`, broadcast MAC, VLAN tag).
+- `ipv4.js` — `IPv4Packet` with TTL decrement/expiry and protocol tag.
+- `arp.js` — `ArpMessage` + per-device `ArpCache`.
+- `icmp.js` — `IcmpMessage` (echo request/reply, time-exceeded, unreachable).
+
+Coming later: DHCP, DNS, NAT/PAT, ACL, static/OSPF routing, STP/RSTP, VLAN
+trunking, EtherChannel, port security, HSRP, IPv6/OSPFv3.

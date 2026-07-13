@@ -19,6 +19,8 @@ import { Toolbar } from '../ui/Toolbar.js';
 import { ContextMenu } from '../ui/ContextMenu.js';
 import { PropertiesPanel } from '../ui/PropertiesPanel.js';
 import { TerminalManager } from '../ui/TerminalManager.js';
+import { PacketEngine } from '../engine/PacketEngine.js';
+import { PacketAnimator } from '../ui/PacketAnimator.js';
 
 const AUTOSAVE_TOPOLOGY_EVENTS = [
   'nodeAdded',
@@ -48,9 +50,20 @@ function bootstrap() {
     history,
   });
 
+  const packetEngine = new PacketEngine(topology);
+  const packetAnimator = new PacketAnimator({ container, topology, camera });
+
+  // Cabling/addressing changes invalidate cached ARP entries — clear them so
+  // pings re-resolve against the current topology.
+  for (const eventName of ['edgeAdded', 'edgeRemoved', 'nodeRemoved', 'loaded', 'cleared']) {
+    topology.addEventListener(eventName, () => packetEngine.reset());
+  }
+
   const terminals = new TerminalManager({
     topology,
     layer: document.getElementById('terminal-layer'),
+    packetEngine,
+    onPackets: (events) => packetAnimator.play(events),
   });
 
   const contextMenu = new ContextMenu(document.getElementById('context-menu'));

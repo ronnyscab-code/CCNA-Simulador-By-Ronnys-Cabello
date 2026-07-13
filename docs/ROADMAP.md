@@ -15,7 +15,7 @@ functional and tested before the next one begins.
       Cisco-style CLI parser and terminal UI: modes (`config`, `config-if`,
       `config-router`, `config-line`, `config-vlan`), command set, tab
       completion, command history, Cisco-style error messages.
-- [ ] **v0.4 — Packet Engine**
+- [x] **v0.4 — Packet Engine**
       `PacketEngine`, `Packet`/`Frame` models, TTL, ARP, ICMP, TCP/UDP
       primitives, packet animation along cables.
 - [ ] **v0.5 — Switching**
