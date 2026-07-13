@@ -38,15 +38,7 @@ export function registerShowCommands(tree) {
 
   tree.add('show vlan brief', (session) => renderVlanBrief(session.device));
 
-  tree.add('show mac address-table', () =>
-    [
-      '          Mac Address Table',
-      '-------------------------------------------',
-      '',
-      'Vlan    Mac Address       Type        Ports',
-      '----    -----------       --------    -----',
-    ].join('\n'),
-  );
+  tree.add('show mac address-table', (session) => renderMacAddressTable(session));
 
   tree.add(
     'show arp',
@@ -70,6 +62,39 @@ export function registerShowCommands(tree) {
   tree.add('show ip ospf interface', (session) => renderOspfInterface(session.device));
 
   tree.add('show version', (session) => renderVersion(session.device));
+}
+
+/**
+ * The switch's learned CAM table, read from the packet engine's runtime.
+ * @param {import('./CliSession.js').CliSession} session
+ * @returns {string}
+ */
+function renderMacAddressTable(session) {
+  const header = [
+    '          Mac Address Table',
+    '-------------------------------------------',
+    '',
+    'Vlan    Mac Address       Type        Ports',
+    '----    -----------       --------    -----',
+  ];
+
+  if (!session.device.capabilities.switching) {
+    return '% MAC address table is only maintained on switches.';
+  }
+  const engine = session.packetEngine;
+  if (!engine) return header.join('\n');
+
+  const rows = engine
+    .macTableFor(session.node.id)
+    .toArray()
+    .map(
+      (entry) =>
+        `${pad(String(entry.vlan), 8)}${pad(entry.mac, 18)}${pad(entry.type, 12)}${shortName(
+          entry.port,
+        )}`,
+    );
+
+  return [...header, ...rows].join('\n');
 }
 
 /**

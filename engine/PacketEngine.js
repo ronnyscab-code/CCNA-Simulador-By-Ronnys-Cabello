@@ -23,12 +23,14 @@
 import { sameSubnet } from '../devices/net-utils.js';
 import { ArpCache } from '../protocols/arp.js';
 import { L2Fabric } from './L2Fabric.js';
+import { MacTable } from './MacTable.js';
 
 /** @enum {string} */
 export const PingReason = Object.freeze({
   OK: 'ok',
   NO_SOURCE_IP: 'no-source-ip',
   DIFFERENT_SUBNET: 'different-subnet',
+  DIFFERENT_VLAN: 'different-vlan',
   UNREACHABLE_ARP: 'unreachable-arp',
   NOT_CONNECTED: 'not-connected',
 });
@@ -42,6 +44,8 @@ export class PacketEngine {
     this.fabric = new L2Fabric(topology);
     /** @type {Map<string, ArpCache>} nodeId → cache */
     this.arpCaches = new Map();
+    /** @type {Map<string, MacTable>} switch nodeId → CAM table */
+    this.macTables = new Map();
   }
 
   /**
@@ -54,10 +58,20 @@ export class PacketEngine {
   }
 
   /**
-   * Clears all dynamic state (ARP caches). Called on `reload`.
+   * @param {string} nodeId
+   * @returns {MacTable}
+   */
+  macTableFor(nodeId) {
+    if (!this.macTables.has(nodeId)) this.macTables.set(nodeId, new MacTable());
+    return this.macTables.get(nodeId);
+  }
+
+  /**
+   * Clears all dynamic state (ARP caches, MAC tables). Called on `reload`.
    */
   reset() {
     this.arpCaches.clear();
+    this.macTables.clear();
   }
 
   /**
@@ -86,16 +100,32 @@ export class PacketEngine {
     const path = this.fabric.findPath(srcNodeId, dstNode.id);
     if (!path) return fail(PingReason.NOT_CONNECTED);
 
+    // VLAN segregation: two hosts reachable at the physical layer still can't
+    // talk if their switch access ports are in different VLANs.
+    const srcVlan = this.fabric.hostAccessVlan(srcNodeId);
+    const dstVlan = this.fabric.hostAccessVlan(dstNode.id);
+    if (srcVlan !== null && dstVlan !== null && srcVlan !== dstVlan) {
+      return fail(PingReason.DIFFERENT_VLAN);
+    }
+    const frameVlan = srcVlan ?? dstVlan ?? 1;
+
     const dstIface = dstNode.device.interfaces.find((i) => i.enabled && i.ipAddress === dstIp);
+    const srcMac = egress.mac;
+    const dstMac = dstIface.mac;
     const srcCache = this.arpCacheFor(srcNodeId);
     const dstCache = this.arpCacheFor(dstNode.id);
+
+    // Switches along the path learn both endpoints' MACs (source learned as
+    // the frame travels each direction). This populates `show mac
+    // address-table`.
+    this._learnAlongPath(path, srcMac, dstMac, frameVlan);
 
     // ARP resolution (only if not already cached).
     if (!srcCache.has(dstIp)) {
       events.push({ kind: 'arp-request', path });
       events.push({ kind: 'arp-reply', path: [...path].reverse() });
-      srcCache.set(dstIp, dstIface.mac);
-      dstCache.set(egress.ipAddress, egress.mac);
+      srcCache.set(dstIp, dstMac);
+      dstCache.set(egress.ipAddress, srcMac);
     }
 
     // ICMP echo request + reply.
@@ -111,6 +141,29 @@ export class PacketEngine {
       targetMac: dstIface.mac,
       events,
     };
+  }
+
+  /**
+   * Populates the MAC table of every switch on the path. For a switch at
+   * position i in `[src, ...switches..., dst]`, the source MAC is learned on
+   * the port facing the previous hop and the destination MAC on the port
+   * facing the next hop — exactly what a real switch records as the two
+   * frames (request then reply) pass through it.
+   * @param {string[]} path
+   * @param {string} srcMac
+   * @param {string} dstMac
+   * @param {number} vlan
+   */
+  _learnAlongPath(path, srcMac, dstMac, vlan) {
+    for (let i = 1; i < path.length - 1; i += 1) {
+      const node = this.topology.getNode(path[i]);
+      if (!node || node.deviceType !== 'switch') continue;
+      const table = this.macTableFor(node.id);
+      const portToSrc = this.fabric.portFacing(node.id, path[i - 1]);
+      const portToDst = this.fabric.portFacing(node.id, path[i + 1]);
+      if (portToSrc) table.learn(vlan, srcMac, portToSrc);
+      if (portToDst) table.learn(vlan, dstMac, portToDst);
+    }
   }
 
   /**

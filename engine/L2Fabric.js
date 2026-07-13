@@ -87,6 +87,43 @@ export class L2Fabric {
   }
 
   /**
+   * The access VLAN a host effectively belongs to: the `switchport access
+   * vlan` of the switch port it plugs into. Returns null if the host's
+   * neighbor is not a switch (a direct host-host or host-router link has no
+   * VLAN concept). Multi-homed hosts use their first switch link.
+   * @param {string} hostId
+   * @returns {number|null}
+   */
+  hostAccessVlan(hostId) {
+    for (const edge of this.topology.getEdgesForNode(hostId)) {
+      const otherId = edge.otherNodeId(hostId);
+      const other = this.topology.getNode(otherId);
+      if (!other || !L2Fabric.isBridge(other) || other.deviceType !== 'switch') continue;
+      const switchPort = this.topology.portForNode(edge, otherId);
+      const iface = switchPort ? other.device.getInterface(switchPort) : null;
+      if (iface && iface.switchportMode === 'access') {
+        return iface.accessVlan ?? 1;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * The switch port on `switchId` that faces `neighborId`, or null.
+   * @param {string} switchId
+   * @param {string} neighborId
+   * @returns {string|null}
+   */
+  portFacing(switchId, neighborId) {
+    for (const edge of this.topology.getEdgesForNode(switchId)) {
+      if (edge.otherNodeId(switchId) === neighborId) {
+        return this.topology.portForNode(edge, switchId);
+      }
+    }
+    return null;
+  }
+
+  /**
    * Every host/router reachable at layer 2 from `srcId` (its broadcast
    * domain), excluding the bridges themselves — the set an ARP broadcast
    * would reach.

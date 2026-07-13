@@ -8,6 +8,22 @@ so minor bumps may include breaking changes).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-12
+
+### Added — Switching
+
+- `engine/MacTable.js` — per-switch CAM table (VLAN + MAC → port), with
+  learning/refresh and lookup.
+- Switches learn source MACs as frames pass through them: a successful ping
+  populates the CAM tables of every switch on the path, on the correct
+  ports. `show mac address-table` renders the learned entries live.
+- VLAN-aware layer-2 delivery: hosts on switch access ports in the same VLAN
+  reach each other; hosts in different access VLANs cannot (new
+  `different-vlan` ping reason) — the classic "same switch, different VLAN,
+  no connectivity" behavior.
+- `L2Fabric` gains VLAN helpers (a host's ingress access VLAN, the switch
+  port facing a neighbor).
+
 ## [0.4.0] - 2026-07-12
 
 ### Added — Packet engine

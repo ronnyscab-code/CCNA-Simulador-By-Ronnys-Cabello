@@ -10,7 +10,7 @@ Runs 100% in the browser. No backend, no build step, no account.
 
 ## Status
 
-**v0.4 — Packet engine** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
+**v0.5 — Switching** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
 for the full version plan through v1.0, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 for how the codebase is organized.
 
@@ -57,6 +57,13 @@ for how the codebase is organized.
   ICMP echo across the real layer-2 fabric (works through switches).
 - Packets animate along the cabling — ARP (amber) then ICMP (blue/green) —
   tracking the devices as you pan and zoom.
+
+**Switching (v0.5)**
+
+- Switches learn source MACs as traffic flows; `show mac address-table`
+  reflects what they've learned, on the right ports and VLANs.
+- Access-port VLANs segregate traffic: same VLAN reaches, different VLAN
+  doesn't — just like real gear.
 
 ## Getting started
 

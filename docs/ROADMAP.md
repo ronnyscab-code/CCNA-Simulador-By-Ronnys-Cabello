@@ -18,7 +18,7 @@ functional and tested before the next one begins.
 - [x] **v0.4 — Packet Engine**
       `PacketEngine`, `Packet`/`Frame` models, TTL, ARP, ICMP, TCP/UDP
       primitives, packet animation along cables.
-- [ ] **v0.5 — Switching**
+- [x] **v0.5 — Switching**
       MAC address table, flooding, unicast/broadcast/multicast forwarding,
       VLAN-aware switching basics.
 - [ ] **v0.6 — Routing**
