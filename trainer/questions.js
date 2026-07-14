@@ -438,6 +438,303 @@ export const QUESTIONS = Object.freeze([
       'Idempotency means re-running a playbook/config converges to the desired state and makes no changes if the device is already compliant — a core property of tools like Ansible.',
     reference: '6.0 Automation — configuration management',
   },
+
+  // --- Additional Network Fundamentals ---
+  {
+    id: 'nf-mac-length',
+    domain: DOMAINS.FUNDAMENTALS,
+    difficulty: 'Beginner',
+    prompt: 'How long is an Ethernet MAC address, and how is it split?',
+    choices: [
+      { id: 'a', text: '32 bits: network + host' },
+      { id: 'b', text: '48 bits: a 24-bit OUI (vendor) plus a 24-bit device identifier' },
+      { id: 'c', text: '64 bits: interface ID only' },
+      { id: 'd', text: '128 bits, like IPv6' },
+    ],
+    correct: ['b'],
+    multi: false,
+    explanation:
+      'A MAC address is 48 bits (6 bytes): the first 24 bits are the vendor OUI assigned by the IEEE, the last 24 bits identify the specific NIC.',
+    reference: '1.0 Network Fundamentals — Ethernet addressing',
+  },
+  {
+    id: 'nf-cable-crossover',
+    domain: DOMAINS.FUNDAMENTALS,
+    difficulty: 'Intermediate',
+    prompt: 'Ignoring auto-MDIX, which link traditionally required a crossover cable?',
+    choices: [
+      { id: 'a', text: 'PC to switch' },
+      { id: 'b', text: 'Router to switch' },
+      { id: 'c', text: 'Switch to switch' },
+      { id: 'd', text: 'PC to router' },
+    ],
+    correct: ['c'],
+    multi: false,
+    explanation:
+      'Like-device links (switch–switch, PC–PC, PC–router) historically needed a crossover so TX pairs met RX pairs. Unlike-device links (PC–switch) used straight-through. Auto-MDIX now negotiates this automatically.',
+    reference: '1.0 Network Fundamentals — cabling',
+  },
+  {
+    id: 'nf-vlsm-block',
+    domain: DOMAINS.FUNDAMENTALS,
+    difficulty: 'Advanced',
+    prompt:
+      'Which subnet mask gives you exactly enough addresses for a point-to-point link between two routers?',
+    choices: [
+      { id: 'a', text: '255.255.255.0 (/24)' },
+      { id: 'b', text: '255.255.255.252 (/30)' },
+      { id: 'c', text: '255.255.255.248 (/29)' },
+      { id: 'd', text: '255.255.255.255 (/32)' },
+    ],
+    correct: ['b'],
+    multi: false,
+    explanation:
+      'A /30 provides 4 addresses — network, two usable hosts, and broadcast — which is exactly what a two-router point-to-point link needs. (/31 is also used in practice, but /30 is the classic CCNA answer.)',
+    reference: '1.0 Network Fundamentals — VLSM',
+  },
+
+  // --- Additional Network Access ---
+  {
+    id: 'na-etherchannel',
+    domain: DOMAINS.ACCESS,
+    difficulty: 'Advanced',
+    prompt: 'What is the main benefit of bundling links into an EtherChannel?',
+    choices: [
+      { id: 'a', text: 'It disables spanning tree entirely' },
+      {
+        id: 'b',
+        text: 'It combines links into one logical link for more bandwidth without STP blocking the extras',
+      },
+      { id: 'c', text: 'It converts the ports to routed mode' },
+      { id: 'd', text: 'It encrypts inter-switch traffic' },
+    ],
+    correct: ['b'],
+    multi: false,
+    explanation:
+      'EtherChannel aggregates several physical links into one logical link. STP treats the bundle as a single port, so no member is blocked and the aggregate bandwidth is usable.',
+    reference: '2.0 Network Access — EtherChannel',
+  },
+  {
+    id: 'na-wireless-ap-mode',
+    domain: DOMAINS.ACCESS,
+    difficulty: 'Intermediate',
+    prompt: 'In a controller-based wireless deployment, what role does a lightweight AP play?',
+    choices: [
+      { id: 'a', text: 'It makes all forwarding and policy decisions itself' },
+      {
+        id: 'b',
+        text: 'It handles real-time RF, tunneling client traffic to a WLC that centralizes control',
+      },
+      { id: 'c', text: 'It routes between VLANs' },
+      { id: 'd', text: 'It acts as a DHCP server for clients' },
+    ],
+    correct: ['b'],
+    multi: false,
+    explanation:
+      'A lightweight AP performs time-sensitive RF tasks and tunnels traffic (CAPWAP) to a Wireless LAN Controller, which centralizes configuration, security, and roaming decisions.',
+    reference: '2.0 Network Access — wireless architectures',
+  },
+
+  // --- Additional IP Connectivity ---
+  {
+    id: 'ip-ospf-cost',
+    domain: DOMAINS.CONNECTIVITY,
+    difficulty: 'Advanced',
+    prompt: 'By default, how does OSPF calculate an interface cost?',
+    choices: [
+      { id: 'a', text: 'Hop count' },
+      { id: 'b', text: 'Reference bandwidth divided by interface bandwidth' },
+      { id: 'c', text: 'Delay plus reliability' },
+      { id: 'd', text: 'Administrative distance' },
+    ],
+    correct: ['b'],
+    multi: false,
+    explanation:
+      'OSPF cost = reference bandwidth (default 100 Mbps) ÷ interface bandwidth. Higher-bandwidth links get a lower cost and are preferred. The reference can be raised so Gigabit+ links differ.',
+    reference: '3.0 IP Connectivity — OSPF metric',
+  },
+  {
+    id: 'ip-floating-static',
+    domain: DOMAINS.CONNECTIVITY,
+    difficulty: 'Advanced',
+    prompt: 'What is a "floating" static route?',
+    choices: [
+      { id: 'a', text: 'A route that changes its destination automatically' },
+      {
+        id: 'b',
+        text: 'A backup static route with a higher administrative distance, used only if the primary fails',
+      },
+      { id: 'c', text: 'A route learned by OSPF' },
+      { id: 'd', text: 'A route with no next hop' },
+    ],
+    correct: ['b'],
+    multi: false,
+    explanation:
+      'A floating static route is given an AD higher than the dynamic/primary route so it stays out of the table until the preferred route disappears — a simple failover mechanism.',
+    reference: '3.0 IP Connectivity — static routing',
+  },
+  {
+    id: 'ip-arp-purpose',
+    domain: DOMAINS.CONNECTIVITY,
+    difficulty: 'Beginner',
+    prompt: 'What does a host use ARP for?',
+    choices: [
+      { id: 'a', text: 'To find the MAC address for a known IPv4 address on the local subnet' },
+      { id: 'b', text: 'To obtain an IP address from a server' },
+      { id: 'c', text: 'To resolve a domain name to an IP' },
+      { id: 'd', text: 'To encrypt traffic' },
+    ],
+    correct: ['a'],
+    multi: false,
+    explanation:
+      'ARP maps a known IPv4 address to its MAC address on the local link. For off-subnet destinations, the host ARPs for its default gateway’s MAC, not the remote host’s.',
+    reference: '3.0 IP Connectivity — ARP',
+  },
+
+  // --- Additional IP Services ---
+  {
+    id: 'svc-dhcp-relay',
+    domain: DOMAINS.SERVICES,
+    difficulty: 'Intermediate',
+    prompt:
+      'A DHCP server is on a different subnet from the clients. What lets the clients still get addresses?',
+    choices: [
+      { id: 'a', text: 'Spanning tree' },
+      { id: 'b', text: 'A DHCP relay (ip helper-address) on the clients’ gateway' },
+      { id: 'c', text: 'A trunk port' },
+      { id: 'd', text: 'A static route on the clients' },
+    ],
+    correct: ['b'],
+    multi: false,
+    explanation:
+      'DHCP Discover is a broadcast that routers don’t forward. Configuring ip helper-address on the SVI/interface makes the router relay the request as unicast to the DHCP server across subnets.',
+    reference: '4.0 IP Services — DHCP relay',
+  },
+  {
+    id: 'svc-syslog-severity',
+    domain: DOMAINS.SERVICES,
+    difficulty: 'Advanced',
+    prompt: 'On the syslog severity scale, which is most urgent?',
+    choices: [
+      { id: 'a', text: 'Level 0 (Emergency)' },
+      { id: 'b', text: 'Level 7 (Debugging)' },
+      { id: 'c', text: 'Level 5 (Notification)' },
+      { id: 'd', text: 'Level 4 (Warning)' },
+    ],
+    correct: ['a'],
+    multi: false,
+    explanation:
+      'Syslog severities run 0–7 from most to least severe: 0 Emergency is the highest urgency; 7 Debugging is the lowest. Lower number = more severe.',
+    reference: '4.0 IP Services — syslog',
+  },
+  {
+    id: 'svc-nat-terms',
+    domain: DOMAINS.SERVICES,
+    difficulty: 'Advanced',
+    prompt: 'In Cisco NAT terminology, what is the "inside global" address?',
+    choices: [
+      { id: 'a', text: 'The private address of an internal host' },
+      { id: 'b', text: 'The public address an internal host is translated to' },
+      { id: 'c', text: 'The address of an external server' },
+      { id: 'd', text: 'The broadcast address' },
+    ],
+    correct: ['b'],
+    multi: false,
+    explanation:
+      'Inside local is the host’s real private address; inside global is the translated public address the outside world sees. Outside local/global describe external hosts similarly.',
+    reference: '4.0 IP Services — NAT terminology',
+  },
+
+  // --- Additional Security Fundamentals ---
+  {
+    id: 'sec-extended-acl-placement',
+    domain: DOMAINS.SECURITY,
+    difficulty: 'Advanced',
+    prompt: 'Where should an extended ACL typically be placed?',
+    choices: [
+      { id: 'a', text: 'As close to the destination as possible' },
+      { id: 'b', text: 'As close to the source as possible, to drop unwanted traffic early' },
+      { id: 'c', text: 'Only on the internet-facing router' },
+      { id: 'd', text: 'It does not matter' },
+    ],
+    correct: ['b'],
+    multi: false,
+    explanation:
+      'Because an extended ACL can match source, destination, protocol, and ports, it is placed close to the source so denied traffic is dropped before consuming network resources. Standard ACLs (source only) go near the destination.',
+    reference: '5.0 Security Fundamentals — ACL placement',
+  },
+  {
+    id: 'sec-dai',
+    domain: DOMAINS.SECURITY,
+    difficulty: 'Advanced',
+    prompt: 'Dynamic ARP Inspection (DAI) protects against which attack?',
+    choices: [
+      { id: 'a', text: 'DHCP starvation' },
+      { id: 'b', text: 'ARP spoofing / man-in-the-middle' },
+      { id: 'c', text: 'MAC flooding' },
+      { id: 'd', text: 'VLAN hopping' },
+    ],
+    correct: ['b'],
+    multi: false,
+    explanation:
+      'DAI validates ARP packets against the DHCP snooping binding table and drops ones with forged IP-to-MAC mappings, defeating ARP-spoofing man-in-the-middle attacks.',
+    reference: '5.0 Security Fundamentals — DAI',
+  },
+  {
+    id: 'sec-password-storage',
+    domain: DOMAINS.SECURITY,
+    difficulty: 'Intermediate',
+    prompt:
+      'Which command stores the enable secret using a strong hash rather than reversible encryption?',
+    choices: [
+      { id: 'a', text: 'enable password' },
+      { id: 'b', text: 'enable secret' },
+      { id: 'c', text: 'service password-encryption' },
+      { id: 'd', text: 'username privilege' },
+    ],
+    correct: ['b'],
+    multi: false,
+    explanation:
+      '"enable secret" stores a hash of the password. "enable password" and the type-7 obfuscation from "service password-encryption" are weak and reversible, so "enable secret" is preferred.',
+    reference: '5.0 Security Fundamentals — device hardening',
+  },
+
+  // --- Additional Automation & Programmability ---
+  {
+    id: 'auto-northbound',
+    domain: DOMAINS.AUTOMATION,
+    difficulty: 'Advanced',
+    prompt: 'In an SDN model, what does a northbound API connect?',
+    choices: [
+      { id: 'a', text: 'The controller to the network devices' },
+      { id: 'b', text: 'Applications/automation tools to the controller' },
+      { id: 'c', text: 'Two switches to each other' },
+      { id: 'd', text: 'A router to the internet' },
+    ],
+    correct: ['b'],
+    multi: false,
+    explanation:
+      'Northbound APIs let applications and orchestration tools talk to the controller (expressing intent). Southbound APIs (e.g. NETCONF, OpenFlow) let the controller program the devices.',
+    reference: '6.0 Automation — SDN APIs',
+  },
+  {
+    id: 'auto-yaml-usage',
+    domain: DOMAINS.AUTOMATION,
+    difficulty: 'Beginner',
+    prompt:
+      'Ansible playbooks and many CI configs are commonly written in which human-friendly format?',
+    choices: [
+      { id: 'a', text: 'YAML' },
+      { id: 'b', text: 'Assembly' },
+      { id: 'c', text: 'A packet capture' },
+      { id: 'd', text: 'A binary blob' },
+    ],
+    correct: ['a'],
+    multi: false,
+    explanation:
+      'YAML’s indentation-based, human-readable structure makes it the common choice for Ansible playbooks and pipeline definitions. JSON and XML are also used for data exchange.',
+    reference: '6.0 Automation — data formats',
+  },
 ]);
 
 /**
