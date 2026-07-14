@@ -8,6 +8,21 @@ so minor bumps may include breaking changes).
 
 ## [Unreleased]
 
+### Added — IP services & security (post-1.0)
+
+- **ACLs** (`protocols/acl.js`): standard numbered access lists with
+  wildcard matching, first-match-wins + implicit deny, enforced inbound and
+  outbound on router interfaces (`ip access-group`); `show access-lists` and
+  running-config render them. New "Keep the guest out" troubleshooting lab.
+- **DHCP** (`protocols/dhcp.js`): router/server address pools (`ip dhcp
+pool`, `network`, `default-router`, `dns-server`, `ip dhcp
+excluded-address`) and client leases via `ip address dhcp`; the engine
+  allocates the next free address on the client's segment.
+- **NAT/PAT** (`protocols/nat.js`): static mappings and overload (PAT) to the
+  outside interface, selected by an ACL; `ip nat inside`/`outside`,
+  `ip nat inside source ...`, and `show ip nat translations`.
+- The CCNA Trainer question bank grew to 38 original questions.
+
 ## [1.0.0] - 2026-07-14
 
 ### Added — CCNA Trainer & 1.0 release

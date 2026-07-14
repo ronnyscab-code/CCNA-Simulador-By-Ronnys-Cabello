@@ -38,8 +38,12 @@ functional and tested before the next one begins.
 
 ## Beyond 1.0
 
-Additional protocols from the original vision that can layer onto the
-existing engine without architectural change: DHCP, DNS, NAT/PAT, ACLs,
-EtherChannel, port security, HSRP, and IPv6/OSPFv3.
+Additional protocols from the original vision, layered onto the existing
+engine without architectural change:
+
+- [x] ACLs (standard numbered)
+- [x] DHCP (server pools + client leases)
+- [x] NAT / PAT (static + overload)
+- [ ] DNS, EtherChannel, port security, HSRP, IPv6 / OSPFv3
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for how these pieces fit together.

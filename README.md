@@ -105,6 +105,15 @@ Trainer are all in place and tested (131 unit tests). See
   test, **Flashcards** is flip-to-reveal, and **Stats** tracks accuracy,
   streaks, per-domain progress, and achievements — all saved locally.
 
+**IP services & security (post-1.0)**
+
+- **ACLs**: `access-list` + `ip access-group` filter traffic on router
+  interfaces (`show access-lists`).
+- **DHCP**: routers serve `ip dhcp pool`s and clients lease with
+  `ip address dhcp`.
+- **NAT/PAT**: `ip nat inside`/`outside` + `ip nat inside source ...`
+  translate private hosts to a public address (`show ip nat translations`).
+
 ## Getting started
 
 No build step is required — this is plain ES Modules, HTML, and CSS.
