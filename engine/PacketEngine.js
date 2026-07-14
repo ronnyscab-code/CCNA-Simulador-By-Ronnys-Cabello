@@ -26,6 +26,7 @@ import { DEFAULT_TTL } from '../protocols/ipv4.js';
 import { L2Fabric } from './L2Fabric.js';
 import { MacTable } from './MacTable.js';
 import { computeSpanningTree } from './SpanningTree.js';
+import { computeOspf } from '../protocols/ospf.js';
 
 /** @enum {string} */
 export const PingReason = Object.freeze({
@@ -82,6 +83,16 @@ export class PacketEngine {
   }
 
   /**
+   * The converged OSPF state (neighbors, DR/BDR, learned routes). Recomputed
+   * on demand from the current topology; consumed here for forwarding and by
+   * `show ip ospf neighbor` / `show ip route`.
+   * @returns {import('../protocols/ospf.js').OspfResult}
+   */
+  ospf() {
+    return computeOspf(this.topology, this.fabric);
+  }
+
+  /**
    * Clears all dynamic state (ARP caches, MAC tables). Called on `reload`.
    */
   reset() {
@@ -109,6 +120,10 @@ export class PacketEngine {
     // switches don't create looping layer-2 paths.
     const blockedPorts = this.spanningTree().blockedPorts;
 
+    // OSPF routes, computed once, so routers can forward to remote subnets
+    // learned dynamically (no static route required).
+    const ospfRoutes = this.ospf().routes;
+
     // Walk the packet hop by hop through routers. Each iteration makes one
     // forwarding decision and delivers the frame across one layer-2 segment
     // to the next hop (a router) or the final destination.
@@ -122,7 +137,7 @@ export class PacketEngine {
 
     // Prevent pathological loops even if TTL logic is bypassed.
     for (let guard = 0; guard < 64; guard += 1) {
-      const decision = routeLookup(current.device, dstIp);
+      const decision = routeLookup(current.device, dstIp, ospfRoutes.get(current.id) ?? []);
       if (!decision) {
         return fail(current === srcNode ? PingReason.DIFFERENT_SUBNET : PingReason.NO_ROUTE);
       }

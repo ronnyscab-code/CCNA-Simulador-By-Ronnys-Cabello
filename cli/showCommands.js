@@ -47,17 +47,13 @@ export function registerShowCommands(tree) {
 
   tree.add('show cdp neighbors', (session) => renderCdpNeighbors(session));
 
-  tree.add('show ip route', (session) => renderIpRoute(session.device));
+  tree.add('show ip route', (session) => renderIpRoute(session));
 
   tree.add('show spanning-tree', (session) => renderSpanningTree(session));
 
   tree.add('show access-lists', () => '');
 
-  tree.add('show ip ospf neighbor', (session) =>
-    session.device.config.ospf
-      ? 'Neighbor ID     Pri   State           Dead Time   Address         Interface'
-      : '',
-  );
+  tree.add('show ip ospf neighbor', (session) => renderOspfNeighbor(session));
 
   tree.add('show ip ospf interface', (session) => renderOspfInterface(session.device));
 
@@ -130,10 +126,11 @@ function renderCdpNeighbors(session) {
 }
 
 /**
- * @param {import('../devices/Device.js').Device} device
+ * @param {import('./CliSession.js').CliSession} session
  * @returns {string}
  */
-function renderIpRoute(device) {
+function renderIpRoute(session) {
+  const { device, node } = session;
   const legend = ['Codes: C - connected, S - static, O - OSPF', ''];
 
   const routes = [];
@@ -150,7 +147,20 @@ function renderIpRoute(device) {
 
   for (const route of device.config.staticRoutes) {
     const prefix = maskToPrefix(route.mask);
+    seen.add(`${networkAddress(route.prefix, route.mask)}/${prefix}`);
     routes.push(`S    ${route.prefix}/${prefix} [1/0] via ${route.nextHop}`);
+  }
+
+  // OSPF-learned routes from the engine's converged SPF result.
+  const engine = session.packetEngine;
+  if (engine) {
+    const ospfRoutes = engine.ospf().routes.get(node.id) ?? [];
+    for (const route of ospfRoutes) {
+      const key = `${route.network}/${route.prefix}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      routes.push(`O    ${key} [110/${route.metric}] via ${route.nextHop}`);
+    }
   }
 
   if (routes.length === 0) {
@@ -159,6 +169,28 @@ function renderIpRoute(device) {
     );
   }
   return [...legend, ...routes].join('\n');
+}
+
+/**
+ * `show ip ospf neighbor` — the router's OSPF adjacencies from the engine.
+ * @param {import('./CliSession.js').CliSession} session
+ * @returns {string}
+ */
+function renderOspfNeighbor(session) {
+  if (!session.device.config.ospf) return '';
+  const header = 'Neighbor ID     Pri   State           Dead Time   Address         Interface';
+  const engine = session.packetEngine;
+  if (!engine) return header;
+
+  const neighbors = engine.ospf().neighbors.get(session.node.id) ?? [];
+  const rows = neighbors.map(
+    (n) =>
+      `${pad(n.routerId, 16)}${pad(String(n.priority), 6)}${pad(n.state, 16)}${pad(
+        '00:00:38',
+        12,
+      )}${pad(n.address, 16)}${shortName(n.localIface)}`,
+  );
+  return [header, ...rows].join('\n');
 }
 
 /**

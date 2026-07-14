@@ -210,6 +210,11 @@ function buildInterfaceConfig() {
     session.notifyConfigChanged();
   });
 
+  tree.add('ip ospf priority <priority>', (session, args) => {
+    session.currentInterface.ospfPriority = Number(args.priority);
+    session.notifyConfigChanged();
+  });
+
   addExitEnd(tree);
   return tree;
 }

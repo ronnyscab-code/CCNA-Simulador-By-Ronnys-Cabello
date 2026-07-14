@@ -20,15 +20,18 @@ export const RouteType = Object.freeze({
   CONNECTED: 'connected',
   STATIC: 'static',
   DEFAULT: 'default',
+  OSPF: 'ospf',
 });
 
 /**
  * Builds the list of routes a device knows, each normalized to
  * { network, prefix, mask, type, nextHop|null, iface|null }.
  * @param {import('../devices/Device.js').Device} device
+ * @param {Array<object>} [ospfRoutes] - SPF-learned routes for this device
+ *   (from `protocols/ospf.js`), injected by the engine at forwarding time.
  * @returns {Array<object>}
  */
-export function buildRoutes(device) {
+export function buildRoutes(device, ospfRoutes = []) {
   const routes = [];
 
   for (const iface of device.interfaces) {
@@ -66,6 +69,17 @@ export function buildRoutes(device) {
     });
   }
 
+  for (const route of ospfRoutes) {
+    routes.push({
+      network: route.network,
+      prefix: route.prefix,
+      mask: route.mask,
+      type: RouteType.OSPF,
+      nextHop: route.nextHop,
+      iface: null,
+    });
+  }
+
   return routes;
 }
 
@@ -76,10 +90,11 @@ export function buildRoutes(device) {
  * interface — otherwise the route is unusable.
  * @param {import('../devices/Device.js').Device} device
  * @param {string} dstIp
+ * @param {Array<object>} [ospfRoutes] - SPF-learned routes for this device.
  * @returns {{type: string, egressIface: object, nextHopIp: string}|null}
  */
-export function routeLookup(device, dstIp) {
-  const routes = buildRoutes(device);
+export function routeLookup(device, dstIp, ospfRoutes = []) {
+  const routes = buildRoutes(device, ospfRoutes);
 
   const matches = routes
     .filter((route) => networkAddress(dstIp, route.mask) === route.network)
@@ -89,7 +104,8 @@ export function routeLookup(device, dstIp) {
     if (route.type === RouteType.CONNECTED) {
       return { type: route.type, egressIface: route.iface, nextHopIp: dstIp };
     }
-    // Static/default: the next hop must be reachable over a connected subnet.
+    // Static/default/OSPF: the next hop must be reachable over a connected
+    // subnet so we can pick an egress interface.
     const egressIface = connectedInterfaceFor(device, route.nextHop);
     if (egressIface) {
       return { type: route.type, egressIface, nextHopIp: route.nextHop };

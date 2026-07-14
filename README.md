@@ -10,7 +10,7 @@ Runs 100% in the browser. No backend, no build step, no account.
 
 ## Status
 
-**v0.7 — VLANs, trunking & STP** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
+**v0.8 — OSPF** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
 for the full version plan through v1.0, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 for how the codebase is organized.
 
@@ -78,6 +78,14 @@ for how the codebase is organized.
   really prunes VLANs off a trunk.
 - Spanning tree elects a root bridge and blocks redundant links so loops
   can't form; `show spanning-tree` shows the port roles and states.
+
+**OSPF (v0.8)**
+
+- Single-area OSPF: enable it with `router ospf` + `network ... area 0` and
+  routers form adjacencies, elect DR/BDR, and learn each other's subnets —
+  cross-router `ping` works with no static routes.
+- `show ip ospf neighbor` and the `O` routes in `show ip route` reflect the
+  live, converged state.
 
 ## Getting started
 

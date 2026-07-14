@@ -8,6 +8,21 @@ so minor bumps may include breaking changes).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-13
+
+### Added — OSPF (single area)
+
+- `protocols/ospf.js` — a converged single-area OSPFv2 control plane computed
+  over the topology: router IDs (configured or highest interface IP),
+  neighbor adjacencies on shared advertised subnets, DR/BDR election per
+  segment, and Dijkstra (SPF) shortest-path routes to every remote subnet.
+- OSPF-learned routes feed `routeLookup` as `type: "ospf"` entries, so a
+  `ping` across routers now works with OSPF alone — no static routes needed.
+- `show ip ospf neighbor` lists real adjacencies (router ID, priority,
+  state like `FULL/DR`, address, interface); `show ip route` now includes
+  `O` routes with `[110/metric]` and next hop.
+- CLI: `ip ospf priority <n>` on an interface (influences DR/BDR election).
+
 ## [0.7.0] - 2026-07-13
 
 ### Added — VLANs, trunking & spanning tree

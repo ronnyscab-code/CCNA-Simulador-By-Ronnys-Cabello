@@ -26,7 +26,7 @@ functional and tested before the next one begins.
       end-to-end connectivity across routers.
 - [x] **v0.7 — VLAN**
       VLANs, trunking (802.1Q), access/trunk ports, `show vlan brief`, STP/RSTP.
-- [ ] **v0.8 — OSPF**
+- [x] **v0.8 — OSPF**
       Single-area OSPF, neighbor discovery, `show ip ospf neighbor`, DR/BDR.
 - [ ] **v0.9 — Troubleshooting**
       Scenario engine: objectives, injected faults, validation, scoring,
