@@ -48,7 +48,9 @@ export function renderRunningConfig(device) {
       }
     }
 
-    if (iface.ipAddress && iface.subnetMask) {
+    if (iface.dhcp) {
+      lines.push(' ip address dhcp');
+    } else if (iface.ipAddress && iface.subnetMask) {
       lines.push(` ip address ${iface.ipAddress} ${iface.subnetMask}`);
     } else if (!device.capabilities.switching) {
       lines.push(' no ip address');
@@ -77,6 +79,18 @@ export function renderRunningConfig(device) {
     lines.push(`ip route ${route.prefix} ${route.mask} ${route.nextHop}`);
   }
   if (device.config.staticRoutes.length > 0) lines.push('!');
+
+  // DHCP server.
+  for (const range of device.config.dhcpExcluded ?? []) {
+    lines.push(`ip dhcp excluded-address ${range.lo} ${range.hi}`);
+  }
+  for (const [name, pool] of Object.entries(device.config.dhcpPools ?? {})) {
+    lines.push(`ip dhcp pool ${name}`);
+    if (pool.network && pool.mask) lines.push(` network ${pool.network} ${pool.mask}`);
+    if (pool.defaultRouter) lines.push(` default-router ${pool.defaultRouter}`);
+    if (pool.dnsServer) lines.push(` dns-server ${pool.dnsServer}`);
+    lines.push('!');
+  }
 
   // Access lists.
   for (const [id, acl] of Object.entries(device.config.acls ?? {})) {

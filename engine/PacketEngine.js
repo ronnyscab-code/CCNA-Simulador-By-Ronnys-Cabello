@@ -28,6 +28,7 @@ import { L2Fabric } from './L2Fabric.js';
 import { MacTable } from './MacTable.js';
 import { computeSpanningTree } from './SpanningTree.js';
 import { computeOspf } from '../protocols/ospf.js';
+import { nextFreeAddress, poolsServedBy } from '../protocols/dhcp.js';
 
 /** @enum {string} */
 export const PingReason = Object.freeze({
@@ -100,6 +101,58 @@ export class PacketEngine {
   reset() {
     this.arpCaches.clear();
     this.macTables.clear();
+  }
+
+  /**
+   * Requests a DHCP lease for a client interface: finds a reachable server
+   * whose pool covers the client's segment and assigns the next free address
+   * (plus gateway). Mutates the client interface on success.
+   * @param {string} clientNodeId
+   * @param {string} ifaceName
+   * @returns {{success: boolean, ip?: string, gateway?: string, reason?: string}}
+   */
+  requestDhcp(clientNodeId, ifaceName) {
+    const client = this.topology.getNode(clientNodeId);
+    const iface = client?.device?.getInterface(ifaceName);
+    if (!iface) return { success: false, reason: 'no-interface' };
+
+    // Every host/router reachable at layer 2 is a potential DHCP server.
+    const reachable = [clientNodeId, ...this.fabric.broadcastDomain(clientNodeId)];
+    for (const serverId of reachable) {
+      if (serverId === clientNodeId) continue;
+      const server = this.topology.getNode(serverId);
+      if (!server?.device) continue;
+
+      for (const { pool, serverIp } of poolsServedBy(server.device)) {
+        const used = this._addressesInUse();
+        const reserved = [pool.defaultRouter, serverIp].filter(Boolean);
+        const excluded = server.device.config.dhcpExcluded ?? [];
+        const address = nextFreeAddress(pool, used, excluded, reserved);
+        if (!address) continue;
+
+        iface.setIp(address, pool.mask);
+        iface.enabled = true;
+        iface.dhcp = true;
+        if (pool.defaultRouter) client.device.defaultGateway = pool.defaultRouter;
+        return { success: true, ip: address, gateway: pool.defaultRouter };
+      }
+    }
+    return { success: false, reason: 'no-server' };
+  }
+
+  /**
+   * Collects every IPv4 address currently assigned in the topology, so DHCP
+   * never hands out one that's already taken.
+   * @returns {Set<string>}
+   */
+  _addressesInUse() {
+    const used = new Set();
+    for (const node of this.topology.getNodes()) {
+      for (const iface of node.device?.interfaces ?? []) {
+        if (iface.ipAddress) used.add(iface.ipAddress);
+      }
+    }
+    return used;
   }
 
   /**

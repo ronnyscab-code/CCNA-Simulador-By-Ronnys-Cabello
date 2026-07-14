@@ -30,6 +30,7 @@ export function buildCommandTrees() {
   trees.set(Mode.VLAN_CONFIG, buildVlanConfig());
   trees.set(Mode.LINE_CONFIG, buildLineConfig());
   trees.set(Mode.ROUTER_CONFIG, buildRouterConfig());
+  trees.set(Mode.DHCP_CONFIG, buildDhcpConfig());
   return trees;
 }
 
@@ -181,6 +182,19 @@ function buildGlobalConfig() {
     session.notifyConfigChanged();
   });
 
+  // DHCP server: pools and excluded ranges.
+  tree.add('ip dhcp pool <name>', (session, args) => {
+    const pools = session.device.config.dhcpPools;
+    pools[args.name] ??= { network: null, mask: null, defaultRouter: null, dnsServer: null };
+    session.enterDhcpPool(args.name);
+    session.notifyConfigChanged();
+  });
+  tree.add('ip dhcp excluded-address <lo> <hi>', (session, args) => {
+    if (!isValidIpv4(args.lo) || !isValidIpv4(args.hi)) return '% Invalid input detected.';
+    session.device.config.dhcpExcluded.push({ lo: args.lo, hi: args.hi });
+    session.notifyConfigChanged();
+  });
+
   addExitEnd(tree);
   return tree;
 }
@@ -198,8 +212,21 @@ function buildInterfaceConfig() {
       return "% Invalid input detected at '^' marker.";
     }
   });
+  tree.add('ip address dhcp', (session) => {
+    session.currentInterface.enabled = true;
+    if (!session.packetEngine) {
+      session.currentInterface.dhcp = true;
+      return;
+    }
+    const result = session.packetEngine.requestDhcp(session.node.id, session.currentInterface.name);
+    session.notifyConfigChanged();
+    return result.success
+      ? `Interface ${session.currentInterface.name} assigned DHCP address ${result.ip}`
+      : '% No DHCP server available on this segment.';
+  });
   tree.add('no ip address', (session) => {
     session.currentInterface.clearIp();
+    session.currentInterface.dhcp = false;
     session.notifyConfigChanged();
   });
 
@@ -263,6 +290,33 @@ function buildVlanConfig() {
   tree.add('name <name>', (session, args) => {
     const vlan = session.device.config.vlans[session.currentVlanId];
     if (vlan) vlan.name = args.name;
+    session.notifyConfigChanged();
+  });
+  addExitEnd(tree);
+  return tree;
+}
+
+// --- DHCP pool config --------------------------------------------------
+
+function buildDhcpConfig() {
+  const tree = new CommandTree();
+  const pool = (session) => session.device.config.dhcpPools[session.currentDhcpPool];
+
+  tree.add('network <address> <mask>', (session, args) => {
+    if (!isValidIpv4(args.address) || !isValidSubnetMask(args.mask)) {
+      return '% Invalid input detected.';
+    }
+    Object.assign(pool(session), { network: args.address, mask: args.mask });
+    session.notifyConfigChanged();
+  });
+  tree.add('default-router <ip>', (session, args) => {
+    if (!isValidIpv4(args.ip)) return '% Invalid input detected.';
+    pool(session).defaultRouter = args.ip;
+    session.notifyConfigChanged();
+  });
+  tree.add('dns-server <ip>', (session, args) => {
+    if (!isValidIpv4(args.ip)) return '% Invalid input detected.';
+    pool(session).dnsServer = args.ip;
     session.notifyConfigChanged();
   });
   addExitEnd(tree);

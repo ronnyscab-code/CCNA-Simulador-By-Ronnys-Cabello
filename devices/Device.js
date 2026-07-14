@@ -53,7 +53,15 @@ export class Device {
    * @returns {{vlans: object, staticRoutes: object[], ospf: object|null, lines: object, acls: object}}
    */
   static defaultConfig() {
-    return { vlans: {}, staticRoutes: [], ospf: null, lines: {}, acls: {} };
+    return {
+      vlans: {},
+      staticRoutes: [],
+      ospf: null,
+      lines: {},
+      acls: {},
+      dhcpPools: {},
+      dhcpExcluded: [],
+    };
   }
 
   /**

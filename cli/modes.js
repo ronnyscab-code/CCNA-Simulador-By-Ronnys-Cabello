@@ -17,6 +17,7 @@ export const Mode = Object.freeze({
   VLAN_CONFIG: 'vlan-config', // hostname(config-vlan)#
   LINE_CONFIG: 'line-config', // hostname(config-line)#
   ROUTER_CONFIG: 'router-config', // hostname(config-router)#
+  DHCP_CONFIG: 'dhcp-config', // hostname(dhcp-config)#
 });
 
 /** Prompt suffix (inside the parentheses) for each configuration submode. */
@@ -26,6 +27,7 @@ const CONFIG_SUFFIX = Object.freeze({
   [Mode.VLAN_CONFIG]: 'config-vlan',
   [Mode.LINE_CONFIG]: 'config-line',
   [Mode.ROUTER_CONFIG]: 'config-router',
+  [Mode.DHCP_CONFIG]: 'dhcp-config',
 });
 
 /**

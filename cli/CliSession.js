@@ -51,6 +51,7 @@ export class CliSession {
     this.currentVlanId = null; // number in config-vlan
     this.currentLine = null; // string in config-line
     this.routerProcess = null; // { protocol, id } in config-router
+    this.currentDhcpPool = null; // pool name in dhcp-config
 
     /** @type {string[]} executed command lines, oldest first. */
     this.commandHistory = [];
@@ -146,6 +147,14 @@ export class CliSession {
   enterRouter(process) {
     this.routerProcess = process;
     this._pushMode(Mode.ROUTER_CONFIG);
+  }
+
+  /**
+   * @param {string} poolName
+   */
+  enterDhcpPool(poolName) {
+    this.currentDhcpPool = poolName;
+    this._pushMode(Mode.DHCP_CONFIG);
   }
 
   /**
