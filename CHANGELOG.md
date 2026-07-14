@@ -14,8 +14,8 @@ so minor bumps may include breaking changes).
   wildcard matching, first-match-wins + implicit deny, enforced inbound and
   outbound on router interfaces (`ip access-group`); `show access-lists` and
   running-config render them. New "Keep the guest out" troubleshooting lab.
-- **DHCP** (`protocols/dhcp.js`): router/server address pools (`ip dhcp
-pool`, `network`, `default-router`, `dns-server`, `ip dhcp
+- **DHCP** (`protocols/dhcp.js`): router/server address pools (`ip dhcp pool`
+  with `network` / `default-router` / `dns-server`, plus `ip dhcp
 excluded-address`) and client leases via `ip address dhcp`; the engine
   allocates the next free address on the client's segment.
 - **NAT/PAT** (`protocols/nat.js`): static mappings and overload (PAT) to the
