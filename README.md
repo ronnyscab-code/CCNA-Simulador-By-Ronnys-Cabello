@@ -10,7 +10,7 @@ Runs 100% in the browser. No backend, no build step, no account.
 
 ## Status
 
-**v0.8 — OSPF** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
+**v0.9 — Troubleshooting labs** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
 for the full version plan through v1.0, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 for how the codebase is organized.
 
@@ -86,6 +86,14 @@ for how the codebase is organized.
   cross-router `ping` works with no static routes.
 - `show ip ospf neighbor` and the `O` routes in `show ip route` reflect the
   live, converged state.
+
+**Troubleshooting labs (v0.9)**
+
+- The **Labs** button opens a catalog of broken networks. Pick one, fix it
+  with the device CLIs, and press **Check** for a score.
+- Faults span the CCNA basics (shut-down interface, missing IP, VLAN
+  mismatch, un-advertised OSPF network) plus a generator of addressing
+  drills; hints reveal progressively and an explanation appears on success.
 
 ## Getting started
 

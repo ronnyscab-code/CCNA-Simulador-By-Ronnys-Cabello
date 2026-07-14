@@ -257,7 +257,9 @@ function spfRoutes(sourceId, graph, routers, topology) {
     const nextHop = firstHop.get(router.id);
     if (!nextHop) continue;
 
-    for (const iface of router.device.interfaces) {
+    // Only subnets the remote router actually advertises into OSPF (covered
+    // by one of its `network` statements) are learnable.
+    for (const { iface } of activeInterfaces(router.device)) {
       if (!iface.enabled || !iface.ipAddress || !iface.subnetMask) continue;
       const network = networkAddress(iface.ipAddress, iface.subnetMask);
       const prefix = maskToPrefix(iface.subnetMask);

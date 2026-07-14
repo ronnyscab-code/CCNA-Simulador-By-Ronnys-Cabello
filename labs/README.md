@@ -1,8 +1,13 @@
 # labs/
 
-**Status:** empty — lands alongside the scenario engine in **v0.9** (see
-[../docs/ROADMAP.md](../docs/ROADMAP.md)).
+Scenario **content** for the troubleshooting labs (added in v0.9).
 
-Will hold the actual lab/scenario content: pre-built topologies, injected
-faults, and objectives consumed by `scenarios/`. Content data, not logic —
-kept separate so new labs can be added without touching the engine.
+- `scenarios.js` — the catalog: authored broken-network scenarios plus
+  `generateAddressingScenarios()`, a parametric generator. `allScenarios()`
+  returns the full list consumed by the Labs UI.
+- `builders.js` — `TopologyBuilder`, a fluent helper for authoring scenario
+  topologies with real `Topology`/`Node`/`Edge` objects.
+
+The engine that runs and scores these lives in [`../scenarios/`](../scenarios/).
+Each scenario is `{ id, title, difficulty, objective, description,
+createTopology(), checks, hints, explanation }`.

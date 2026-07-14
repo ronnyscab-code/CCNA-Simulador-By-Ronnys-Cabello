@@ -28,9 +28,9 @@ functional and tested before the next one begins.
       VLANs, trunking (802.1Q), access/trunk ports, `show vlan brief`, STP/RSTP.
 - [x] **v0.8 — OSPF**
       Single-area OSPF, neighbor discovery, `show ip ospf neighbor`, DR/BDR.
-- [ ] **v0.9 — Troubleshooting**
+- [x] **v0.9 — Troubleshooting**
       Scenario engine: objectives, injected faults, validation, scoring,
-      hints, explanations. Hundreds of generated scenarios.
+      hints, explanations. Authored faults + a parametric generator.
 - [ ] **v1.0 — Release**
       CCNA Trainer (original question bank aligned to the CCNA 200-301
       blueprint, study mode, exam mode, flashcards, spaced repetition,

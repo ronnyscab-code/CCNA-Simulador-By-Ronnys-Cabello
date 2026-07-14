@@ -8,6 +8,31 @@ so minor bumps may include breaking changes).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-07-13
+
+### Added — Troubleshooting labs
+
+- A scenario engine (`scenarios/ScenarioEngine.js`) that loads a deliberately
+  broken topology, then scores the learner's fix against a set of checks.
+- A reusable, DOM-free checks library (`scenarios/checks.js`):
+  `pingSucceeds`/`pingFails`, `interfaceEnabled`, `interfaceHasIp`,
+  `defaultGatewayIs`, `accessVlanIs`, `ospfNeighborUp`, and a `custom` escape
+  hatch — each with a description, point weight, and pass/fail + detail.
+- A scenario catalog (`labs/scenarios.js`) with authored faults (shut-down
+  interface, missing IP, VLAN mismatch, un-advertised OSPF network) plus a
+  parametric generator producing a family of addressing drills, built with a
+  fluent `TopologyBuilder` (`labs/builders.js`).
+- A "Labs" modal (`ui/ScenarioPanel.js`): browse scenarios, load one (it
+  swaps the canvas to the broken network), read the objective, fix it via the
+  CLI, then **Check** for a score. Hints reveal one at a time (small score
+  penalty); the explanation appears once every check passes.
+
+### Fixed
+
+- OSPF only advertises subnets covered by a `network` statement — previously
+  SPF leaked every connected subnet of a neighbor regardless of what it
+  advertised.
+
 ## [0.8.0] - 2026-07-13
 
 ### Added — OSPF (single area)
