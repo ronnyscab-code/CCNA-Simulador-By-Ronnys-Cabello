@@ -14,6 +14,7 @@ devices/    Device class hierarchy (Router, Switch, PC, ...). No DOM.
 protocols/  Protocol implementations (ARP, ICMP, OSPF, ...). No DOM.
 cli/        Cisco CLI parser and command implementations. No DOM.
 scenarios/  Scenario/lab definitions and validation logic. No DOM.
+trainer/    CCNA Trainer: question bank, spaced repetition, stats. No DOM.
 ui/         Everything that touches the DOM: rendering, events, widgets.
 labs/       Lab/scenario content data (JSON-ish modules), consumed by scenarios/.
 js/         Application entry point (main.js) that wires layers together.

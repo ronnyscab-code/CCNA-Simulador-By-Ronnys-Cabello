@@ -19,6 +19,7 @@ import { Toolbar } from '../ui/Toolbar.js';
 import { ContextMenu } from '../ui/ContextMenu.js';
 import { PropertiesPanel } from '../ui/PropertiesPanel.js';
 import { ScenarioPanel } from '../ui/ScenarioPanel.js';
+import { TrainerPanel } from '../ui/TrainerPanel.js';
 import { TerminalManager } from '../ui/TerminalManager.js';
 import { PacketEngine } from '../engine/PacketEngine.js';
 import { PacketAnimator } from '../ui/PacketAnimator.js';
@@ -88,6 +89,7 @@ function bootstrap() {
   new Toolbar({ topology, camera, history, storage, canvasManager });
   new PropertiesPanel({ topology, selection, history, canvasManager, terminals });
   new ScenarioPanel({ topology, engine: packetEngine, history });
+  new TrainerPanel();
 
   // Surface transient engine messages (e.g. "no free interface") in the
   // status bar's mode slot for a few seconds.

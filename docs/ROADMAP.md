@@ -31,9 +31,15 @@ functional and tested before the next one begins.
 - [x] **v0.9 — Troubleshooting**
       Scenario engine: objectives, injected faults, validation, scoring,
       hints, explanations. Authored faults + a parametric generator.
-- [ ] **v1.0 — Release**
+- [x] **v1.0 — Release**
       CCNA Trainer (original question bank aligned to the CCNA 200-301
       blueprint, study mode, exam mode, flashcards, spaced repetition,
       statistics, achievements), full documentation, stability pass.
+
+## Beyond 1.0
+
+Additional protocols from the original vision that can layer onto the
+existing engine without architectural change: DHCP, DNS, NAT/PAT, ACLs,
+EtherChannel, port security, HSRP, and IPv6/OSPFv3.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for how these pieces fit together.

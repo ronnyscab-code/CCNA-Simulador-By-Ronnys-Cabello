@@ -10,9 +10,11 @@ Runs 100% in the browser. No backend, no build step, no account.
 
 ## Status
 
-**v0.9 — Troubleshooting labs** (done). See [docs/ROADMAP.md](docs/ROADMAP.md)
-for the full version plan through v1.0, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-for how the codebase is organized.
+**v1.0 released.** The editor, device model, Cisco-style CLI, packet engine,
+switching, routing, VLANs/STP, OSPF, troubleshooting labs, and the CCNA
+Trainer are all in place and tested (131 unit tests). See
+[docs/ROADMAP.md](docs/ROADMAP.md) for the journey and what can come next, and
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the codebase is organized.
 
 ## Features
 
@@ -95,6 +97,14 @@ for how the codebase is organized.
   mismatch, un-advertised OSPF network) plus a generator of addressing
   drills; hints reveal progressively and an explanation appears on success.
 
+**CCNA Trainer (v1.0)**
+
+- The **Trainer** button opens a study companion with an original question
+  bank written to the CCNA 200-301 blueprint (all six domains).
+- **Study** uses spaced repetition (SM-2), **Exam** is a scored practice
+  test, **Flashcards** is flip-to-reveal, and **Stats** tracks accuracy,
+  streaks, per-domain progress, and achievements — all saved locally.
+
 ## Getting started
 
 No build step is required — this is plain ES Modules, HTML, and CSS.
@@ -140,8 +150,9 @@ OpenCCNA-Simulator/
 ├── protocols/         Protocol implementations (v0.4+)
 ├── topology/          Pure topology data model
 ├── cli/               Cisco-style CLI (v0.3+)
-├── scenarios/         Troubleshooting scenario engine (v0.9+)
-├── labs/              Lab/scenario content (v0.9+)
+├── scenarios/         Troubleshooting scenario engine
+├── labs/              Lab/scenario content
+├── trainer/           CCNA Trainer: question bank, spaced repetition, stats
 ├── ui/                DOM rendering and interaction (the only DOM-aware layer)
 ├── docs/               Architecture and roadmap docs
 └── tests/             node:test unit tests
@@ -166,8 +177,8 @@ described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md):
   behavior is reimplemented from publicly documented command syntax and
   output shapes, not from Cisco source.
 - No exam questions are copied from Cisco, ExamTopics, Boson, 9tut, or any
-  other question bank. The CCNA Trainer (from v1.0) uses an original
-  question bank written against the public CCNA 200-301 exam blueprint.
+  other question bank. The CCNA Trainer uses an original question bank
+  written against the public CCNA 200-301 exam blueprint.
 
 ## License
 

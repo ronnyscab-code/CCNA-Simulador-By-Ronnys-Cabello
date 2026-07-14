@@ -8,6 +8,31 @@ so minor bumps may include breaking changes).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-14
+
+### Added — CCNA Trainer & 1.0 release
+
+- A study subsystem under `trainer/` (all DOM-free and unit-tested):
+  - `questions.js` — an **original** question bank written to the CCNA
+    200-301 blueprint, spanning all six domains, each item with an
+    explanation and a blueprint reference. No questions are copied from Cisco
+    or any third-party bank.
+  - `SpacedRepetition.js` — an SM-2 scheduler (intervals grow on success,
+    reset on lapse, ease floored at 1.3).
+  - `TrainerStore.js` — progress persistence with injectable storage
+    (localStorage in the browser, in-memory in tests): per-card SR state,
+    stats, and unlocked achievements.
+  - `Achievements.js` — milestone badges evaluated against the stats.
+  - `TrainerEngine.js` — study (spaced-repetition queue), exam (scored
+    quiz), flashcards, and stats, with achievement syncing.
+- A **Trainer** modal (`ui/TrainerPanel.js`): Study, Exam, Flashcards, and
+  Stats modes, immediate feedback with explanations, per-domain progress
+  bars, and an achievements grid.
+
+This marks **v1.0**: the editor, device model, Cisco-style CLI, packet
+engine, switching, routing, VLANs/STP, OSPF, troubleshooting labs, and the
+CCNA Trainer are all in place and tested (131 unit tests).
+
 ## [0.9.0] - 2026-07-13
 
 ### Added — Troubleshooting labs
