@@ -14,6 +14,7 @@
 import { TopologyBuilder } from './builders.js';
 import {
   pingSucceeds,
+  pingFails,
   interfaceEnabled,
   interfaceHasIp,
   accessVlanIs,
@@ -184,6 +185,50 @@ function ospfMissingNetwork() {
 }
 
 /**
+ * 5 — Restrict access with an ACL: block the guest, allow the trusted PC.
+ */
+function aclRestrictGuest() {
+  return {
+    id: 'acl-restrict-guest',
+    title: 'Keep the guest out',
+    difficulty: 'Advanced',
+    objective:
+      'On R1, block GUEST (192.168.1.66) from reaching the server while PC1 (192.168.1.10) still can.',
+    description:
+      'Both PC1 and a GUEST laptop share the office LAN and can currently reach the 192.168.2.10 server. Policy says the guest must be blocked — apply an access list on R1 so PC1 still works but the guest does not.',
+    createTopology() {
+      const b = new TopologyBuilder();
+      b.pc('pc1', 'PC1', { x: 100, y: 140 })
+        .pc('guest', 'GUEST', { x: 100, y: 300 })
+        .switch('sw1', 'SW1', { x: 320, y: 220 })
+        .router('r1', 'R1', { x: 540, y: 220 })
+        .pc('srv', 'SERVER', { x: 760, y: 220 });
+      b.link('pc1', 'FastEthernet0', 'sw1', 'FastEthernet0/1');
+      b.link('guest', 'FastEthernet0', 'sw1', 'FastEthernet0/2');
+      b.link('sw1', 'FastEthernet0/3', 'r1', 'GigabitEthernet0/0');
+      b.link('r1', 'GigabitEthernet0/1', 'srv', 'FastEthernet0');
+      b.ip('pc1', 'FastEthernet0', '192.168.1.10', MASK24).gateway('pc1', '192.168.1.1');
+      b.ip('guest', 'FastEthernet0', '192.168.1.66', MASK24).gateway('guest', '192.168.1.1');
+      b.ip('r1', 'GigabitEthernet0/0', '192.168.1.1', MASK24);
+      b.ip('r1', 'GigabitEthernet0/1', '192.168.2.1', MASK24);
+      b.ip('srv', 'FastEthernet0', '192.168.2.10', MASK24).gateway('srv', '192.168.2.1');
+      // No ACL yet — the guest can currently reach the server (the problem).
+      return b.build();
+    },
+    checks: [
+      pingSucceeds('PC1', '192.168.2.10', { points: 1 }),
+      pingFails('GUEST', '192.168.2.10', { points: 2 }),
+    ],
+    hints: [
+      'A standard ACL matches the source address. Deny the guest, then permit everyone else.',
+      'On R1: `access-list 10 deny host 192.168.1.66`, `access-list 10 permit any`, then on Gi0/1 `ip access-group 10 out`.',
+    ],
+    explanation:
+      'A standard ACL filters by source. Denying 192.168.1.66 and permitting everyone else, applied outbound toward the server, drops only the guest’s traffic. Order matters: the permit-any must come after the deny, and remember the implicit deny at the end.',
+  };
+}
+
+/**
  * Generates a family of "assign the missing address" connectivity drills:
  * two PCs on a switch in the same /24, the second PC missing its IP.
  * @param {number} count
@@ -239,6 +284,7 @@ export function allScenarios() {
     missingIpAddress(),
     vlanMismatch(),
     ospfMissingNetwork(),
+    aclRestrictGuest(),
     ...generateAddressingScenarios(),
   ];
 }

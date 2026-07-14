@@ -153,6 +153,34 @@ function buildGlobalConfig() {
     session.notifyConfigChanged();
   });
 
+  // Standard numbered ACLs (1–99). Source can be an address+wildcard, a
+  // `host <ip>`, or `any`.
+  const addAce = (session, num, action, srcIp, srcWildcard) => {
+    const acls = session.device.config.acls;
+    const acl = (acls[num] ??= { type: 'standard', entries: [] });
+    acl.entries.push({ type: 'standard', action, srcIp, srcWildcard });
+    session.notifyConfigChanged();
+  };
+  for (const action of ['permit', 'deny']) {
+    tree.add(`access-list <num> ${action} <source> <wildcard>`, (session, args) => {
+      if (!isValidIpv4(args.source) || !isValidIpv4(args.wildcard)) {
+        return '% Invalid input detected.';
+      }
+      addAce(session, args.num, action, args.source, args.wildcard);
+    });
+    tree.add(`access-list <num> ${action} host <ip>`, (session, args) => {
+      if (!isValidIpv4(args.ip)) return '% Invalid input detected.';
+      addAce(session, args.num, action, args.ip, '0.0.0.0');
+    });
+    tree.add(`access-list <num> ${action} any`, (session, args) => {
+      addAce(session, args.num, action, '0.0.0.0', '255.255.255.255');
+    });
+  }
+  tree.add('no access-list <num>', (session, args) => {
+    delete session.device.config.acls[args.num];
+    session.notifyConfigChanged();
+  });
+
   addExitEnd(tree);
   return tree;
 }
@@ -212,6 +240,15 @@ function buildInterfaceConfig() {
 
   tree.add('ip ospf priority <priority>', (session, args) => {
     session.currentInterface.ospfPriority = Number(args.priority);
+    session.notifyConfigChanged();
+  });
+
+  tree.add('ip access-group <num> in', (session, args) => {
+    session.currentInterface.aclIn = args.num;
+    session.notifyConfigChanged();
+  });
+  tree.add('ip access-group <num> out', (session, args) => {
+    session.currentInterface.aclOut = args.num;
     session.notifyConfigChanged();
   });
 

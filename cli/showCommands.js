@@ -19,6 +19,7 @@ import {
   shortName,
 } from './RunningConfig.js';
 import { maskToPrefix, networkAddress } from '../devices/net-utils.js';
+import { renderAcl } from '../protocols/acl.js';
 
 /**
  * @param {import('./CommandTree.js').CommandTree} tree
@@ -51,7 +52,7 @@ export function registerShowCommands(tree) {
 
   tree.add('show spanning-tree', (session) => renderSpanningTree(session));
 
-  tree.add('show access-lists', () => '');
+  tree.add('show access-lists', (session) => renderAccessLists(session.device));
 
   tree.add('show ip ospf neighbor', (session) => renderOspfNeighbor(session));
 
@@ -169,6 +170,18 @@ function renderIpRoute(session) {
     );
   }
   return [...legend, ...routes].join('\n');
+}
+
+/**
+ * `show access-lists` — the device's configured ACLs.
+ * @param {import('../devices/Device.js').Device} device
+ * @returns {string}
+ */
+function renderAccessLists(device) {
+  const acls = device.config.acls ?? {};
+  const ids = Object.keys(acls);
+  if (ids.length === 0) return '';
+  return ids.flatMap((id) => renderAcl(id, acls[id])).join('\n');
 }
 
 /**

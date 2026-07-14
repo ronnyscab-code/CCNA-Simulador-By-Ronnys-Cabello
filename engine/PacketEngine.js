@@ -21,7 +21,8 @@
  */
 
 import { ArpCache } from '../protocols/arp.js';
-import { routeLookup } from '../protocols/routing.js';
+import { routeLookup, connectedInterfaceFor } from '../protocols/routing.js';
+import { evaluateAcl } from '../protocols/acl.js';
 import { DEFAULT_TTL } from '../protocols/ipv4.js';
 import { L2Fabric } from './L2Fabric.js';
 import { MacTable } from './MacTable.js';
@@ -38,6 +39,7 @@ export const PingReason = Object.freeze({
   NOT_CONNECTED: 'not-connected',
   NO_ROUTE: 'no-route',
   TTL_EXPIRED: 'ttl-expired',
+  ACL_DENIED: 'acl-denied',
 });
 
 export class PacketEngine {
@@ -134,12 +136,32 @@ export class PacketEngine {
     let ttl = DEFAULT_TTL;
     const visited = new Set([srcNodeId]);
     let dstIface = null;
+    let srcIp = null; // the pinging host's source address (for ACL matching)
+    let arrivalIp = null; // IP the packet arrived from (for ingress ACLs)
 
     // Prevent pathological loops even if TTL logic is bypassed.
     for (let guard = 0; guard < 64; guard += 1) {
       const decision = routeLookup(current.device, dstIp, ospfRoutes.get(current.id) ?? []);
       if (!decision) {
         return fail(current === srcNode ? PingReason.DIFFERENT_SUBNET : PingReason.NO_ROUTE);
+      }
+      if (srcIp === null) srcIp = decision.egressIface.ipAddress;
+
+      // ACLs are enforced on router interfaces: inbound on the interface the
+      // packet arrived on, outbound on the interface it leaves through.
+      if (current.device.capabilities.routing) {
+        const packet = { protocol: 'icmp', srcIp, dstIp };
+        const acls = current.device.config.acls ?? {};
+        const ingress = arrivalIp ? connectedInterfaceFor(current.device, arrivalIp) : null;
+        if (ingress?.aclIn && !evaluateAcl(acls[ingress.aclIn], packet)) {
+          return fail(PingReason.ACL_DENIED);
+        }
+        if (
+          decision.egressIface.aclOut &&
+          !evaluateAcl(acls[decision.egressIface.aclOut], packet)
+        ) {
+          return fail(PingReason.ACL_DENIED);
+        }
       }
 
       const segment = this._deliverSegment(current.id, decision.nextHopIp, blockedPorts);
@@ -164,10 +186,12 @@ export class PacketEngine {
         break;
       }
 
-      // Move to the next-hop router.
+      // Move to the next-hop router. It receives the frame from this device's
+      // egress interface, which is what its inbound ACL will match against.
       const nextRouter = segment.ownerNode;
       if (visited.has(nextRouter.id)) return fail(PingReason.NO_ROUTE);
       visited.add(nextRouter.id);
+      arrivalIp = decision.egressIface.ipAddress;
       ttl -= 1;
       if (ttl <= 0) return fail(PingReason.TTL_EXPIRED);
       current = nextRouter;

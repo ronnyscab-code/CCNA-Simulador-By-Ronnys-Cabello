@@ -54,6 +54,9 @@ export function renderRunningConfig(device) {
       lines.push(' no ip address');
     }
 
+    if (iface.aclIn) lines.push(` ip access-group ${iface.aclIn} in`);
+    if (iface.aclOut) lines.push(` ip access-group ${iface.aclOut} out`);
+
     lines.push(iface.enabled ? ' no shutdown' : ' shutdown');
     lines.push('!');
   }
@@ -74,6 +77,19 @@ export function renderRunningConfig(device) {
     lines.push(`ip route ${route.prefix} ${route.mask} ${route.nextHop}`);
   }
   if (device.config.staticRoutes.length > 0) lines.push('!');
+
+  // Access lists.
+  for (const [id, acl] of Object.entries(device.config.acls ?? {})) {
+    for (const ace of acl.entries) {
+      const src =
+        ace.srcWildcard === '255.255.255.255'
+          ? 'any'
+          : ace.srcWildcard === '0.0.0.0'
+            ? `host ${ace.srcIp}`
+            : `${ace.srcIp} ${ace.srcWildcard}`;
+      lines.push(`access-list ${id} ${ace.action} ${src}`);
+    }
+  }
 
   lines.push('end');
   return lines.join('\n');
