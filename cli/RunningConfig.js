@@ -56,6 +56,9 @@ export function renderRunningConfig(device) {
       lines.push(' no ip address');
     }
 
+    if (iface.natRole === 'inside') lines.push(' ip nat inside');
+    if (iface.natRole === 'outside') lines.push(' ip nat outside');
+
     if (iface.aclIn) lines.push(` ip access-group ${iface.aclIn} in`);
     if (iface.aclOut) lines.push(` ip access-group ${iface.aclOut} out`);
 
@@ -90,6 +93,19 @@ export function renderRunningConfig(device) {
     if (pool.defaultRouter) lines.push(` default-router ${pool.defaultRouter}`);
     if (pool.dnsServer) lines.push(` dns-server ${pool.dnsServer}`);
     lines.push('!');
+  }
+
+  // NAT rules.
+  const nat = device.config.nat;
+  if (nat) {
+    for (const m of nat.staticMaps ?? []) {
+      lines.push(`ip nat inside source static ${m.insideLocal} ${m.insideGlobal}`);
+    }
+    if (nat.dynamic?.overload) {
+      lines.push(
+        `ip nat inside source list ${nat.dynamic.aclId} interface ${nat.dynamic.outsideIface} overload`,
+      );
+    }
   }
 
   // Access lists.

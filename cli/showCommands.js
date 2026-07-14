@@ -54,6 +54,8 @@ export function registerShowCommands(tree) {
 
   tree.add('show access-lists', (session) => renderAccessLists(session.device));
 
+  tree.add('show ip nat translations', (session) => renderNatTranslations(session));
+
   tree.add('show ip ospf neighbor', (session) => renderOspfNeighbor(session));
 
   tree.add('show ip ospf interface', (session) => renderOspfInterface(session.device));
@@ -182,6 +184,27 @@ function renderAccessLists(device) {
   const ids = Object.keys(acls);
   if (ids.length === 0) return '';
   return ids.flatMap((id) => renderAcl(id, acls[id])).join('\n');
+}
+
+/**
+ * `show ip nat translations` — active translations recorded by the engine.
+ * @param {import('./CliSession.js').CliSession} session
+ * @returns {string}
+ */
+function renderNatTranslations(session) {
+  const header = 'Pro Inside global     Inside local      Outside local     Outside global';
+  const engine = session.packetEngine;
+  if (!engine) return header;
+  const rows = engine
+    .natTableFor(session.node.id)
+    .map(
+      (t) =>
+        `${pad(t.protocol, 4)}${pad(t.insideGlobal, 18)}${pad(t.insideLocal, 18)}${pad(
+          t.outsideLocal,
+          18,
+        )}${t.outsideGlobal}`,
+    );
+  return [header, ...rows].join('\n');
 }
 
 /**

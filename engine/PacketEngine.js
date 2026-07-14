@@ -29,6 +29,7 @@ import { MacTable } from './MacTable.js';
 import { computeSpanningTree } from './SpanningTree.js';
 import { computeOspf } from '../protocols/ospf.js';
 import { nextFreeAddress, poolsServedBy } from '../protocols/dhcp.js';
+import { translateSource, makeTranslation } from '../protocols/nat.js';
 
 /** @enum {string} */
 export const PingReason = Object.freeze({
@@ -54,6 +55,17 @@ export class PacketEngine {
     this.arpCaches = new Map();
     /** @type {Map<string, MacTable>} switch nodeId → CAM table */
     this.macTables = new Map();
+    /** @type {Map<string, object[]>} NAT router nodeId → translation rows */
+    this.natTables = new Map();
+  }
+
+  /**
+   * @param {string} nodeId
+   * @returns {object[]} the NAT translation rows recorded on a router.
+   */
+  natTableFor(nodeId) {
+    if (!this.natTables.has(nodeId)) this.natTables.set(nodeId, []);
+    return this.natTables.get(nodeId);
   }
 
   /**
@@ -101,6 +113,7 @@ export class PacketEngine {
   reset() {
     this.arpCaches.clear();
     this.macTables.clear();
+    this.natTables.clear();
   }
 
   /**
@@ -214,6 +227,24 @@ export class PacketEngine {
           !evaluateAcl(acls[decision.egressIface.aclOut], packet)
         ) {
           return fail(PingReason.ACL_DENIED);
+        }
+
+        // NAT: translate the source when the packet moves from an interface
+        // marked `ip nat inside` out through one marked `ip nat outside`.
+        const ingressRole = ingress?.natRole;
+        if (ingressRole === 'inside' && decision.egressIface.natRole === 'outside') {
+          const translated = translateSource(current.device, {
+            srcIp,
+            outsideIfaceIp: decision.egressIface.ipAddress,
+            aclPermits: (aclId, ip) =>
+              evaluateAcl(acls[aclId], { protocol: 'icmp', srcIp: ip, dstIp }),
+          });
+          if (translated) {
+            this.natTableFor(current.id).push(
+              makeTranslation('icmp', translated.insideGlobal, srcIp, dstIp),
+            );
+            srcIp = translated.insideGlobal;
+          }
         }
       }
 

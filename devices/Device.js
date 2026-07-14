@@ -61,6 +61,7 @@ export class Device {
       acls: {},
       dhcpPools: {},
       dhcpExcluded: [],
+      nat: null,
     };
   }
 

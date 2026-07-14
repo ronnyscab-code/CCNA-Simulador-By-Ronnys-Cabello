@@ -195,6 +195,18 @@ function buildGlobalConfig() {
     session.notifyConfigChanged();
   });
 
+  // NAT: static mappings and PAT (overload).
+  const ensureNat = (session) => (session.device.config.nat ??= { staticMaps: [], dynamic: null });
+  tree.add('ip nat inside source static <local> <global>', (session, args) => {
+    if (!isValidIpv4(args.local) || !isValidIpv4(args.global)) return '% Invalid input detected.';
+    ensureNat(session).staticMaps.push({ insideLocal: args.local, insideGlobal: args.global });
+    session.notifyConfigChanged();
+  });
+  tree.add('ip nat inside source list <acl> interface <iface> overload', (session, args) => {
+    ensureNat(session).dynamic = { aclId: args.acl, outsideIface: args.iface, overload: true };
+    session.notifyConfigChanged();
+  });
+
   addExitEnd(tree);
   return tree;
 }
@@ -267,6 +279,15 @@ function buildInterfaceConfig() {
 
   tree.add('ip ospf priority <priority>', (session, args) => {
     session.currentInterface.ospfPriority = Number(args.priority);
+    session.notifyConfigChanged();
+  });
+
+  tree.add('ip nat inside', (session) => {
+    session.currentInterface.natRole = 'inside';
+    session.notifyConfigChanged();
+  });
+  tree.add('ip nat outside', (session) => {
+    session.currentInterface.natRole = 'outside';
     session.notifyConfigChanged();
   });
 
