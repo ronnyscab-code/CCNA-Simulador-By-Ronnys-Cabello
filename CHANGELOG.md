@@ -15,9 +15,9 @@ so minor bumps may include breaking changes).
   outbound on router interfaces (`ip access-group`); `show access-lists` and
   running-config render them. New "Keep the guest out" troubleshooting lab.
 - **DHCP** (`protocols/dhcp.js`): router/server address pools (`ip dhcp pool`
-  with `network` / `default-router` / `dns-server`, plus `ip dhcp
-excluded-address`) and client leases via `ip address dhcp`; the engine
-  allocates the next free address on the client's segment.
+  with network, default-router, dns-server, and excluded ranges) and client
+  leases via `ip address dhcp`; the engine allocates the next free address on
+  the client's segment.
 - **NAT/PAT** (`protocols/nat.js`): static mappings and overload (PAT) to the
   outside interface, selected by an ACL; `ip nat inside`/`outside`,
   `ip nat inside source ...`, and `show ip nat translations`.
