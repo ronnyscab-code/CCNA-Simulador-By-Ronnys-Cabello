@@ -827,3 +827,67 @@
   font-weight: 600;
   z-index: 2100;
 }
+
+/* --- Welcome / getting-started modal --- */
+.welcome-modal {
+  max-width: 560px;
+}
+
+.welcome-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.welcome-step {
+  display: grid;
+  grid-template-columns: 26px 26px 1fr;
+  align-items: start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.welcome-step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-accent-muted);
+  color: var(--color-accent-hover);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.welcome-step-icon {
+  font-size: 18px;
+  text-align: center;
+}
+
+.welcome-step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.welcome-step-title {
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+}
+
+.welcome-step-text code {
+  font-family: var(--font-family-mono);
+  font-size: 12px;
+  color: var(--color-accent-hover);
+  background: var(--color-bg);
+  padding: 0 4px;
+  border-radius: 3px;
+}
