@@ -107,6 +107,7 @@ export class Toolbar {
   }
 
   _bindPalette() {
+    this._placeCount = 0;
     for (const item of this.paletteList.querySelectorAll('.palette-item')) {
       item.addEventListener('dragstart', (event) => {
         event.dataTransfer.setData('text/device-type', item.dataset.deviceType);
@@ -114,6 +115,17 @@ export class Toolbar {
         item.classList.add('dragging');
       });
       item.addEventListener('dragend', () => item.classList.remove('dragging'));
+
+      // Click-to-place fallback: dragging is fiddly on trackpads, so a plain
+      // click drops the device onto the canvas (cascading so they don't stack).
+      item.addEventListener('click', () => {
+        const rect = this.canvasManager.container.getBoundingClientRect();
+        const step = (this._placeCount % 6) * 26;
+        const x = rect.left + rect.width / 2 - 60 + step;
+        const y = rect.top + rect.height / 2 - 60 + step;
+        this._placeCount += 1;
+        this.canvasManager.addDeviceAtClient(item.dataset.deviceType, x, y);
+      });
     }
   }
 
