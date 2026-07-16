@@ -146,11 +146,18 @@ export class CanvasManager extends EventTarget {
    * @param {string} deviceType
    * @param {number} clientX
    * @param {number} clientY
+   * @param {string|null} [model] - Hardware-model id for router/switch.
    * @returns {import('../topology/Node.js').Node}
    */
-  addDeviceAtClient(deviceType, clientX, clientY) {
+  addDeviceAtClient(deviceType, clientX, clientY, model = null) {
     const point = this.snapPoint(this.worldPointFromClient(clientX, clientY));
-    const node = new Node({ id: this.topology.generateId(), deviceType, x: point.x, y: point.y });
+    const node = new Node({
+      id: this.topology.generateId(),
+      deviceType,
+      x: point.x,
+      y: point.y,
+      model: model ?? undefined,
+    });
     this.history.execute(new AddNodeCommand(this.topology, node));
     this.selection.selectNode(node.id);
     return node;

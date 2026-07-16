@@ -12,6 +12,7 @@
  */
 
 import { maskToPrefix } from '../devices/net-utils.js';
+import { modelLabel } from '../devices/models.js';
 
 export class PropertiesPanel {
   /**
@@ -81,6 +82,12 @@ export class PropertiesPanel {
     const chip = el('span', 'prop-device-type');
     chip.textContent = node.deviceType;
     group.appendChild(chip);
+
+    if (node.device.model) {
+      const modelChip = el('span', 'prop-device-model');
+      modelChip.textContent = modelLabel(node.deviceType, node.device.model);
+      group.appendChild(modelChip);
+    }
 
     if (this.terminals) {
       const cliBtn = el('button', 'btn prop-cli-btn labs-check');

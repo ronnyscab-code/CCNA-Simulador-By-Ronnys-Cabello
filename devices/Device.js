@@ -25,13 +25,16 @@ export class Device {
    * @param {string} params.type - Palette device-type key (e.g. "router").
    * @param {NetworkInterface[]} [params.interfaces]
    * @param {object} [params.capabilities]
+   * @param {string|null} [params.model] - Selected hardware-model id (e.g.
+   *   "2960-24TT"); null for types that have no model choices.
    */
-  constructor({ hostname, type, interfaces = [], capabilities = {} }) {
+  constructor({ hostname, type, interfaces = [], capabilities = {}, model = null }) {
     if (!hostname) throw new Error('Device requires a hostname');
     if (!type) throw new Error('Device requires a type');
 
     this.hostname = hostname;
     this.type = type;
+    this.model = model;
     /** @type {NetworkInterface[]} */
     this.interfaces = interfaces;
     this.capabilities = {
@@ -136,6 +139,7 @@ export class Device {
     return {
       hostname: this.hostname,
       type: this.type,
+      model: this.model,
       capabilities: this.capabilities,
       startupConfig: this.startupConfig,
       config: this.config,

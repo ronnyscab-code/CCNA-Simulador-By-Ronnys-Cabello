@@ -86,6 +86,27 @@
   height: 24px;
 }
 
+/* Model dropdown (router/switch): drops onto its own row under the label. */
+.palette-item:has(.palette-model) {
+  flex-wrap: wrap;
+}
+
+.palette-model {
+  flex-basis: 100%;
+  margin-top: 4px;
+  padding: 3px 6px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.palette-model:hover {
+  border-color: var(--color-accent);
+}
+
 .palette-hint {
   margin-top: var(--space-4);
   font-size: var(--font-size-sm);
@@ -339,6 +360,17 @@
   padding: 2px 8px;
   margin-bottom: var(--space-3);
   text-transform: capitalize;
+}
+
+.prop-device-model {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  margin: 0 0 var(--space-3) var(--space-2);
 }
 
 .prop-cli-btn {

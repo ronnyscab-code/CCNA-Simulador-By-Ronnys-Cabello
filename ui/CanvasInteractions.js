@@ -250,7 +250,8 @@ export class CanvasInteractions {
     event.preventDefault();
     const deviceType = event.dataTransfer.getData('text/device-type');
     if (!deviceType) return;
-    this.canvasManager.addDeviceAtClient(deviceType, event.clientX, event.clientY);
+    const model = event.dataTransfer.getData('text/device-model') || null;
+    this.canvasManager.addDeviceAtClient(deviceType, event.clientX, event.clientY, model);
   }
 
   // --- Keyboard ----------------------------------------------------------

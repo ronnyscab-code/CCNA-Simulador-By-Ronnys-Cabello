@@ -51,13 +51,15 @@ export class DeviceFactory {
    * Creates a fresh device of the given type with default interfaces.
    * @param {string} type
    * @param {string} hostname
-   * @param {{rng?: () => number}} [options]
+   * @param {{rng?: () => number, model?: string}} [options] - `model` selects
+   *   a hardware model (interface layout) for types that support it (router,
+   *   switch); ignored by types that don't.
    * @returns {import('./Device.js').Device}
    */
-  static create(type, hostname, { rng = Math.random } = {}) {
+  static create(type, hostname, { rng = Math.random, model } = {}) {
     const Ctor = REGISTRY[type];
     if (!Ctor) throw new Error(`Unknown device type: ${type}`);
-    return new Ctor({ hostname, rng });
+    return new Ctor({ hostname, rng, model });
   }
 
   /**

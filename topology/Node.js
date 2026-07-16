@@ -39,6 +39,8 @@ export class Node {
    * @param {import('../devices/Device.js').Device} [params.device] - A
    *   pre-built device (used by deserialization/cloning). If omitted, one is
    *   created from `deviceType` via `DeviceFactory`.
+   * @param {string} [params.model] - Hardware-model id passed to the factory
+   *   when creating the device (e.g. "2960-48TT"). Ignored if `device` is set.
    * @param {object} [params.meta] - Free-form bag reserved for future layers.
    */
   constructor({
@@ -50,6 +52,7 @@ export class Node {
     width = DEFAULT_SIZE,
     height = DEFAULT_SIZE,
     device = null,
+    model = undefined,
     meta = {},
   }) {
     if (!id) throw new Error('Node requires an id');
@@ -68,7 +71,7 @@ export class Node {
     if (device) {
       this.device = device;
     } else if (DeviceFactory.isSupported(deviceType)) {
-      this.device = DeviceFactory.create(deviceType, resolvedHostname);
+      this.device = DeviceFactory.create(deviceType, resolvedHostname, { model });
     } else {
       // Unknown/legacy type: no logical device, fall back to a stored label.
       this.device = null;

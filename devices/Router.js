@@ -7,35 +7,26 @@
  */
 
 import { Device } from './Device.js';
-import { NetworkInterface } from './NetworkInterface.js';
+import { buildModelInterfaces, defaultModelId } from './models.js';
 
 export class Router extends Device {
   /**
    * @param {object} params
    * @param {string} params.hostname
    * @param {NetworkInterface[]} [params.interfaces]
+   * @param {string} [params.model] - Hardware-model id (e.g. "2911");
+   *   defaults to the ISR 2901 layout (2x GigabitEthernet + 2x Serial).
    * @param {() => number} [params.rng]
    */
-  constructor({ hostname, interfaces, rng = Math.random }) {
+  constructor({ hostname, interfaces, model, rng = Math.random }) {
+    const modelId = model ?? defaultModelId('router');
     super({
       hostname,
       type: 'router',
+      model: modelId,
       capabilities: { routing: true },
-      interfaces: interfaces ?? Router.defaultInterfaces(rng),
+      interfaces: interfaces ?? buildModelInterfaces('router', modelId, rng),
     });
-  }
-
-  /**
-   * @param {() => number} rng
-   * @returns {NetworkInterface[]}
-   */
-  static defaultInterfaces(rng) {
-    return [
-      new NetworkInterface({ name: 'GigabitEthernet0/0', enabled: false, rng }),
-      new NetworkInterface({ name: 'GigabitEthernet0/1', enabled: false, rng }),
-      new NetworkInterface({ name: 'Serial0/0/0', enabled: false, rng }),
-      new NetworkInterface({ name: 'Serial0/0/1', enabled: false, rng }),
-    ];
   }
 
   /**
@@ -45,6 +36,7 @@ export class Router extends Device {
   static fromJSON(data) {
     return new Router({
       hostname: data.hostname,
+      model: data.model ?? undefined,
       interfaces: Device.hydrateInterfaces(data.interfaces),
     });
   }

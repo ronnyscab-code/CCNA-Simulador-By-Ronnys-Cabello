@@ -12,6 +12,8 @@
  * without touching `StorageManager`.
  */
 
+import { modelsForType, defaultModelId } from '../devices/models.js';
+
 export class Toolbar {
   /**
    * @param {object} deps
@@ -108,9 +110,11 @@ export class Toolbar {
 
   _bindPalette() {
     this._placeCount = 0;
+    this._populateModelSelects();
     for (const item of this.paletteList.querySelectorAll('.palette-item')) {
       item.addEventListener('dragstart', (event) => {
         event.dataTransfer.setData('text/device-type', item.dataset.deviceType);
+        event.dataTransfer.setData('text/device-model', this._selectedModel(item) ?? '');
         event.dataTransfer.effectAllowed = 'copy';
         item.classList.add('dragging');
       });
@@ -118,15 +122,50 @@ export class Toolbar {
 
       // Click-to-place fallback: dragging is fiddly on trackpads, so a plain
       // click drops the device onto the canvas (cascading so they don't stack).
-      item.addEventListener('click', () => {
+      item.addEventListener('click', (event) => {
+        // Interacting with the model dropdown must not place a device.
+        if (event.target.closest('.palette-model')) return;
         const rect = this.canvasManager.container.getBoundingClientRect();
         const step = (this._placeCount % 6) * 26;
         const x = rect.left + rect.width / 2 - 60 + step;
         const y = rect.top + rect.height / 2 - 60 + step;
         this._placeCount += 1;
-        this.canvasManager.addDeviceAtClient(item.dataset.deviceType, x, y);
+        this.canvasManager.addDeviceAtClient(
+          item.dataset.deviceType,
+          x,
+          y,
+          this._selectedModel(item),
+        );
       });
     }
+  }
+
+  /**
+   * Fills every `.palette-model` dropdown with its device type's models,
+   * selecting that type's default. Keeps the option list in one place
+   * (`devices/models.js`) rather than duplicating it in the HTML.
+   */
+  _populateModelSelects() {
+    for (const select of this.paletteList.querySelectorAll('.palette-model')) {
+      const type = select.dataset.modelFor;
+      const models = modelsForType(type);
+      select.innerHTML = '';
+      for (const model of models) {
+        const option = document.createElement('option');
+        option.value = model.id;
+        option.textContent = model.label;
+        select.appendChild(option);
+      }
+      select.value = defaultModelId(type) ?? models[0]?.id ?? '';
+    }
+  }
+
+  /**
+   * @param {HTMLElement} item - A `.palette-item`.
+   * @returns {string|null} the model id chosen in this item's dropdown, if any.
+   */
+  _selectedModel(item) {
+    return item.querySelector('.palette-model')?.value || null;
   }
 
   _bindStatusUpdates() {
