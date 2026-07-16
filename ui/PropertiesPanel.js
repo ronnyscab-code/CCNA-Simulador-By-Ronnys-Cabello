@@ -202,22 +202,86 @@ export class PropertiesPanel {
     toggle.append(checkbox, dot, toggleText);
     card.appendChild(toggle);
 
-    // IP + mask (only meaningful for L3-capable ports, but harmless to show).
-    card.appendChild(
-      this._ipField(node, iface, 'IP address', 'ipAddress', 'e.g. 192.168.1.10', isValidIpv4),
-    );
-    card.appendChild(
-      this._ipField(
-        node,
-        iface,
-        'Subnet mask',
-        'subnetMask',
-        'e.g. 255.255.255.0',
-        isValidSubnetMask,
-      ),
-    );
+    // Layer-2 switch ports don't carry an IP — show their switchport role and
+    // VLAN. Routed interfaces (routers) and endpoints (PCs) get IP + mask.
+    const caps = node.device.capabilities ?? {};
+    const isL3 = caps.routing || caps.endpoint;
+    if (!isL3 && caps.switching) {
+      card.appendChild(this._switchportField(node, iface));
+    } else {
+      card.appendChild(
+        this._ipField(node, iface, 'IP address', 'ipAddress', 'e.g. 192.168.1.10', isValidIpv4),
+      );
+      card.appendChild(
+        this._ipField(
+          node,
+          iface,
+          'Subnet mask',
+          'subnetMask',
+          'e.g. 255.255.255.0',
+          isValidSubnetMask,
+        ),
+      );
+    }
 
     return card;
+  }
+
+  /**
+   * Switch-port controls: access/trunk mode and, for access ports, the VLAN.
+   * @param {import('../topology/Node.js').Node} node
+   * @param {import('../devices/NetworkInterface.js').NetworkInterface} iface
+   * @returns {HTMLElement}
+   */
+  _switchportField(node, iface) {
+    const wrap = el('div');
+
+    const modeField = el('div', 'prop-field');
+    const modeLabel = el('label');
+    modeLabel.textContent = 'Modo del puerto';
+    const mode = el('select', 'prop-input');
+    for (const value of ['access', 'trunk']) {
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = value === 'access' ? 'Acceso (una VLAN)' : 'Troncal (varias VLANs)';
+      if ((iface.switchportMode ?? 'access') === value) opt.selected = true;
+      mode.appendChild(opt);
+    }
+    mode.addEventListener('change', () => {
+      this.history.execute(
+        new ConfigureInterfaceCommand(this.topology, node.id, iface.name, {
+          switchportMode: mode.value,
+        }),
+      );
+    });
+    modeField.append(modeLabel, mode);
+    wrap.appendChild(modeField);
+
+    if ((iface.switchportMode ?? 'access') === 'access') {
+      const vlanField = el('div', 'prop-field');
+      const vlanLabel = el('label');
+      vlanLabel.textContent = 'VLAN de acceso';
+      const vlan = el('input', 'prop-input');
+      vlan.type = 'number';
+      vlan.min = '1';
+      vlan.max = '4094';
+      vlan.value = String(iface.accessVlan ?? 1);
+      vlan.addEventListener('change', () => {
+        const n = Number(vlan.value);
+        if (!Number.isInteger(n) || n < 1 || n > 4094) {
+          vlan.classList.add('invalid');
+          return;
+        }
+        vlan.classList.remove('invalid');
+        this.history.execute(
+          new ConfigureInterfaceCommand(this.topology, node.id, iface.name, { accessVlan: n }),
+        );
+      });
+      vlanField.append(vlanLabel, vlan);
+      wrap.appendChild(vlanField);
+    }
+
+    return wrap;
   }
 
   /**
