@@ -21,6 +21,7 @@ import { PropertiesPanel } from '../ui/PropertiesPanel.js';
 import { ScenarioPanel } from '../ui/ScenarioPanel.js';
 import { TrainerPanel } from '../ui/TrainerPanel.js';
 import { WelcomePanel } from '../ui/WelcomePanel.js';
+import { PracticePanel } from '../ui/PracticePanel.js';
 import { TerminalManager } from '../ui/TerminalManager.js';
 import { PacketEngine } from '../engine/PacketEngine.js';
 import { PacketAnimator } from '../ui/PacketAnimator.js';
@@ -90,8 +91,14 @@ function bootstrap() {
   new Toolbar({ topology, camera, history, storage, canvasManager });
   new PropertiesPanel({ topology, selection, history, canvasManager, terminals });
   new ScenarioPanel({ topology, engine: packetEngine, history });
+  new PracticePanel({ topology, engine: packetEngine, history });
   new TrainerPanel();
   new WelcomePanel();
+
+  // On phones the properties panel is a collapsible bottom drawer: tapping
+  // its title toggles it, and selecting a device auto-opens it (so the
+  // "Open CLI" button is one tap away). Harmless on desktop.
+  setupMobileDrawer(selection);
 
   // Surface transient engine messages (e.g. "no free interface") in the
   // status bar's mode slot for a few seconds.
@@ -118,6 +125,28 @@ function bootstrap() {
 function restoreAutosave(topology, storage) {
   const data = storage.loadAutosave();
   if (data) topology.loadFromJSON(data);
+}
+
+/**
+ * Turns the properties panel into a collapsible bottom drawer on small
+ * screens: tap the title to toggle, and selecting a single device opens it.
+ * @param {import('../ui/SelectionManager.js').SelectionManager} selection
+ */
+function setupMobileDrawer(selection) {
+  const panel = document.getElementById('properties-panel');
+  const title = panel?.querySelector('.panel-title');
+  if (!panel || !title) return;
+  const isMobile = () => window.matchMedia('(max-width: 820px)').matches;
+
+  if (isMobile()) panel.classList.add('collapsed');
+  title.addEventListener('click', () => {
+    if (isMobile()) panel.classList.toggle('collapsed');
+  });
+  selection.addEventListener('change', () => {
+    if (isMobile() && selection.getSelectedNodeIds().length === 1) {
+      panel.classList.remove('collapsed');
+    }
+  });
 }
 
 /**
