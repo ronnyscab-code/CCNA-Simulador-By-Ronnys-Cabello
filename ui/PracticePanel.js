@@ -34,6 +34,13 @@ export class PracticePanel {
     this.revealed = false;
     this.lastResult = null;
 
+    // The question currently loaded in the emulator, kept visible in a
+    // persistent objective card (HUD) so the task stays on screen while the
+    // learner configures devices via the CLI.
+    this.activeQuestion = null;
+    this.hud = null;
+    this.hudMinimized = false;
+
     document
       .querySelector('[data-action="open-practice"]')
       ?.addEventListener('click', () => this.open());
@@ -194,8 +201,10 @@ export class PracticePanel {
     openBtn.addEventListener('click', () => {
       this.scenarioEngine.load(q);
       if (this.history) this.history.clear();
+      this.activeQuestion = q;
+      this.lastResult = null;
       this.close();
-      this._toast(`Lab cargado. ${q.labHint}`);
+      this._showObjective();
     });
     detail.appendChild(openBtn);
 
@@ -293,11 +302,113 @@ export class PracticePanel {
     return wrap;
   }
 
-  _toast(text) {
-    const toast = el('div', 'trainer-toast practice-toast');
-    toast.textContent = text;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
+  // --- Persistent objective HUD ----------------------------------------
+
+  /**
+   * Shows (or refreshes) the always-visible objective card for the question
+   * currently loaded in the emulator, so the learner never loses sight of
+   * what the lab is asking while they work in the CLI.
+   */
+  _showObjective() {
+    if (!this.activeQuestion) return;
+    if (!this.hud) {
+      this.hud = el('div', 'practice-hud');
+      document.body.appendChild(this.hud);
+    }
+    this._renderHud();
+  }
+
+  _renderHud() {
+    const q = this.activeQuestion;
+    if (!this.hud || !q) return;
+    this.hud.innerHTML = '';
+    this.hud.classList.toggle('minimized', this.hudMinimized);
+
+    const head = el('div', 'practice-hud-head');
+    const title = el('span', 'practice-hud-title');
+    title.textContent = this.hudMinimized ? '🎯 Objetivo' : '🎯 Objetivo de la práctica';
+    head.appendChild(title);
+
+    const controls = el('div', 'practice-hud-controls');
+    const minBtn = el('button', 'btn icon-btn');
+    minBtn.type = 'button';
+    minBtn.title = this.hudMinimized ? 'Expandir' : 'Minimizar';
+    minBtn.textContent = this.hudMinimized ? '▢' : '—';
+    minBtn.addEventListener('click', () => {
+      this.hudMinimized = !this.hudMinimized;
+      this._renderHud();
+    });
+    const closeBtn = el('button', 'btn icon-btn');
+    closeBtn.type = 'button';
+    closeBtn.title = 'Cerrar';
+    closeBtn.textContent = '✕';
+    closeBtn.addEventListener('click', () => this._hideObjective());
+    controls.append(minBtn, closeBtn);
+    head.appendChild(controls);
+    this.hud.appendChild(head);
+
+    if (this.hudMinimized) return;
+
+    const chip = el('span', 'practice-hud-chip');
+    chip.textContent = `${q.domain} · ${q.difficulty}`;
+    this.hud.appendChild(chip);
+
+    const prompt = el('p', 'practice-hud-prompt');
+    prompt.textContent = q.prompt;
+    this.hud.appendChild(prompt);
+
+    if (q.labHint) {
+      const hint = el('p', 'practice-hud-hint');
+      hint.innerHTML = `<strong>Pista:</strong> ${escapeHtml(q.labHint)}`;
+      this.hud.appendChild(hint);
+    }
+
+    const actions = el('div', 'practice-hud-actions');
+    if (q.checks && q.checks.length > 0) {
+      const checkBtn = el('button', 'btn labs-check');
+      checkBtn.type = 'button';
+      checkBtn.textContent = 'Comprobar red';
+      checkBtn.addEventListener('click', () => {
+        this.lastResult = this.scenarioEngine.evaluate();
+        this._renderHud();
+      });
+      actions.appendChild(checkBtn);
+    }
+    const answerBtn = el('button', 'btn');
+    answerBtn.type = 'button';
+    answerBtn.textContent = 'Responder';
+    answerBtn.addEventListener('click', () => this._openQuestion(q.id));
+    actions.appendChild(answerBtn);
+    this.hud.appendChild(actions);
+
+    if (this.lastResult) {
+      const status = el('div', `practice-hud-status ${this.lastResult.passedAll ? 'ok' : 'fail'}`);
+      status.textContent = this.lastResult.passedAll
+        ? '✔ ¡Red correcta! Objetivo cumplido.'
+        : `Objetivos: ${this.lastResult.score}/${this.lastResult.maxScore} — sigue configurando`;
+      this.hud.appendChild(status);
+    }
+  }
+
+  /** Removes the objective card. */
+  _hideObjective() {
+    if (this.hud) {
+      this.hud.remove();
+      this.hud = null;
+    }
+  }
+
+  /**
+   * Reopens the Práctica modal on a specific question's detail view (so the
+   * learner can pick/reveal the answer without losing the loaded lab).
+   * @param {string} id
+   */
+  _openQuestion(id) {
+    this.activeId = id;
+    this.selected = [];
+    this.revealed = false;
+    this.overlay.hidden = false;
+    this.render();
   }
 }
 

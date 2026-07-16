@@ -981,6 +981,104 @@
   line-height: 1.4;
 }
 
+/* Persistent objective card (HUD) shown over the canvas while a practice
+   lab is loaded, so the task stays visible while configuring via the CLI. */
+.practice-hud {
+  position: fixed;
+  top: 64px;
+  right: 16px;
+  z-index: 60;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.practice-hud.minimized {
+  width: auto;
+}
+
+.practice-hud-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.practice-hud-title {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  color: var(--color-accent-hover);
+}
+
+.practice-hud-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.practice-hud-chip {
+  align-self: flex-start;
+  font-size: 11px;
+  color: var(--color-accent-hover);
+  background: var(--color-accent-muted);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+}
+
+.practice-hud-prompt {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
+.practice-hud-hint {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+.practice-hud-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.practice-hud-status {
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+}
+
+.practice-hud-status.ok {
+  color: #062;
+  background: #b7f7cf;
+  border-color: #7bd;
+}
+
+.practice-hud-status.fail {
+  color: var(--color-text);
+}
+
+@media (max-width: 820px) {
+  .practice-hud {
+    top: auto;
+    bottom: 12px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+}
+
 /* ============================================================= */
 /* Responsive / mobile (phones and small tablets)               */
 /* ============================================================= */
