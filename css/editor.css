@@ -405,6 +405,12 @@
   padding: var(--space-4);
 }
 
+/* The `display: flex` above overrides the browser's default [hidden] rule, so
+   spell out that a hidden overlay stays hidden (higher specificity wins). */
+.labs-overlay[hidden] {
+  display: none;
+}
+
 .labs-modal {
   width: 100%;
   max-width: 620px;
