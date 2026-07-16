@@ -34,6 +34,7 @@ function emptyData() {
       examsTaken: 0,
     },
     achievements: [], // unlocked achievement ids
+    imported: [], // user-imported questions (private to this browser)
   };
 }
 
@@ -137,6 +138,38 @@ export class TrainerStore {
     this.data.achievements.push(id);
     this._save();
     return true;
+  }
+
+  /**
+   * @returns {object[]} the user's imported questions (private to this browser).
+   */
+  getImportedQuestions() {
+    return [...(this.data.imported ?? [])];
+  }
+
+  /**
+   * Replaces the imported-question set.
+   * @param {object[]} questions
+   */
+  setImportedQuestions(questions) {
+    this.data.imported = questions;
+    this._save();
+  }
+
+  /**
+   * Appends imported questions to the existing set.
+   * @param {object[]} questions
+   * @returns {number} total imported after appending.
+   */
+  addImportedQuestions(questions) {
+    this.data.imported = [...(this.data.imported ?? []), ...questions];
+    this._save();
+    return this.data.imported.length;
+  }
+
+  clearImportedQuestions() {
+    this.data.imported = [];
+    this._save();
   }
 
   /**

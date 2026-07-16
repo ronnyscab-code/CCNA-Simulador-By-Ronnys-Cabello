@@ -17,13 +17,17 @@
 import { TrainerEngine } from '../trainer/TrainerEngine.js';
 import { TrainerStore } from '../trainer/TrainerStore.js';
 import { ACHIEVEMENTS, getAchievement } from '../trainer/Achievements.js';
+import { QUESTIONS } from '../trainer/questions.js';
+import { parseQuestions } from '../trainer/parseQuestions.js';
 
 export class TrainerPanel {
   constructor() {
     this.overlay = document.getElementById('trainer-overlay');
-    this.engine = new TrainerEngine({ store: new TrainerStore() });
+    this.store = new TrainerStore();
+    this._rebuildEngine();
     this.view = 'home';
     this.session = null; // per-mode transient state
+    this.importResult = null; // { added, errors } after an import attempt
 
     document
       .querySelector('[data-action="open-trainer"]')
@@ -33,6 +37,18 @@ export class TrainerPanel {
     });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !this.overlay.hidden) this.close();
+    });
+  }
+
+  /**
+   * Builds (or rebuilds) the engine so its question pool includes the
+   * built-in original bank plus any questions the user imported locally.
+   */
+  _rebuildEngine() {
+    const imported = this.store.getImportedQuestions();
+    this.engine = new TrainerEngine({
+      store: this.store,
+      questions: [...QUESTIONS, ...imported],
     });
   }
 
@@ -68,6 +84,7 @@ export class TrainerPanel {
       'exam-results': () => this._renderExamResults(body),
       flashcards: () => this._renderFlashcards(body),
       stats: () => this._renderStats(body),
+      import: () => this._renderImport(body),
     };
     (views[this.view] ?? views.home)();
     modal.appendChild(body);
@@ -109,10 +126,116 @@ export class TrainerPanel {
     }
     body.appendChild(grid);
 
+    const imported = this.store.getImportedQuestions().length;
+    const importBtn = el('button', 'btn trainer-import-btn');
+    importBtn.type = 'button';
+    importBtn.textContent = imported
+      ? `📥 Mis preguntas (${imported} importadas)`
+      : '📥 Importar mis preguntas';
+    importBtn.addEventListener('click', () => {
+      this.view = 'import';
+      this.importResult = null;
+      this.render();
+    });
+    body.appendChild(importBtn);
+
     const stats = this.engine.getStats();
     const summary = el('p', 'labs-tip');
     summary.textContent = `${stats.attempts} answered · ${stats.accuracy}% accuracy · best streak ${stats.bestStreak}`;
     body.appendChild(summary);
+  }
+
+  // --- Import (private, local) ------------------------------------------
+
+  _renderImport(body) {
+    this._backButton(body);
+
+    const intro = el('p', 'labs-intro');
+    intro.innerHTML =
+      'Importa <strong>tus propias</strong> preguntas. Se guardan solo en este navegador (no se suben a ningún sitio) y se suman a Estudio, Examen y Flashcards.';
+    body.appendChild(intro);
+
+    const count = this.store.getImportedQuestions().length;
+    if (count > 0) {
+      const have = el('p', 'labs-tip');
+      have.textContent = `Tienes ${count} preguntas importadas.`;
+      body.appendChild(have);
+    }
+
+    // Format help.
+    const help = el('div', 'labs-explanation');
+    help.innerHTML =
+      '<strong>Formato de texto</strong> (una pregunta por bloque, separadas por una línea en blanco o <code>---</code>):<br>' +
+      '<pre class="trainer-format">Q: ¿Qué comando asigna una IP a la interfaz?\nA) ip address 10.0.0.1 255.255.255.0\nB) ip 10.0.0.1\nC) address 10.0.0.1\nR: A\nE: (explicación opcional)</pre>' +
+      'También aceptas <strong>JSON</strong> (array de objetos con prompt, choices, correct, explanation).';
+    body.appendChild(help);
+
+    // File input.
+    const fileField = el('div', 'prop-field');
+    const fileLabel = el('label');
+    fileLabel.textContent = 'Sube un archivo (.txt o .json)';
+    const file = el('input', 'prop-input');
+    file.type = 'file';
+    file.accept = '.txt,.json,text/plain,application/json';
+    file.addEventListener('change', () => {
+      const f = file.files?.[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        textarea.value = String(reader.result);
+      };
+      reader.readAsText(f);
+    });
+    fileField.append(fileLabel, file);
+    body.appendChild(fileField);
+
+    // Paste area.
+    const textarea = el('textarea', 'prop-input trainer-import-area');
+    textarea.rows = 8;
+    textarea.placeholder = 'Pega aquí tus preguntas (texto o JSON)…';
+    body.appendChild(textarea);
+
+    const actions = el('div', 'labs-actions');
+    const addBtn = el('button', 'btn labs-check');
+    addBtn.textContent = 'Añadir preguntas';
+    addBtn.addEventListener('click', () => {
+      const { questions, errors } = parseQuestions(textarea.value);
+      if (questions.length > 0) {
+        this.store.addImportedQuestions(questions);
+        this._rebuildEngine();
+      }
+      this.importResult = { added: questions.length, errors };
+      this.render();
+    });
+    actions.appendChild(addBtn);
+
+    if (count > 0) {
+      const clearBtn = el('button', 'btn');
+      clearBtn.textContent = 'Borrar importadas';
+      clearBtn.addEventListener('click', () => {
+        this.store.clearImportedQuestions();
+        this._rebuildEngine();
+        this.importResult = { added: 0, errors: [], cleared: true };
+        this.render();
+      });
+      actions.appendChild(clearBtn);
+    }
+    body.appendChild(actions);
+
+    if (this.importResult) {
+      const res = el('div', 'labs-results');
+      const score = el('div', `labs-score${this.importResult.added > 0 ? ' pass' : ''}`);
+      score.textContent = this.importResult.cleared
+        ? 'Preguntas importadas borradas.'
+        : `Añadidas ${this.importResult.added} preguntas.`;
+      res.appendChild(score);
+      for (const err of this.importResult.errors ?? []) {
+        const row = el('div', 'labs-check-row fail');
+        row.innerHTML = `<span class="labs-check-icon">✘</span><span class="labs-check-text">${escapeHtml(err)}</span>`;
+        res.appendChild(row);
+      }
+      body.appendChild(res);
+    }
   }
 
   _enter(view) {

@@ -31,7 +31,10 @@ describe('CLI contextual help (?)', () => {
   test('`show ?` lists many keywords with descriptions', () => {
     const s = switchSession();
     const help = s.complete('show ');
-    assert.ok(help.completions.length >= 30, `expected many show subcommands, got ${help.completions.length}`);
+    assert.ok(
+      help.completions.length >= 30,
+      `expected many show subcommands, got ${help.completions.length}`,
+    );
     assert.ok(help.descriptions, 'expected descriptions map');
     assert.equal(help.descriptions.clock, 'Display the system clock');
     assert.equal(help.descriptions.arp, 'ARP table');
