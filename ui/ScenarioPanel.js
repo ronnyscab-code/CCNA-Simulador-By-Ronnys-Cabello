@@ -12,6 +12,7 @@
 
 import { ScenarioEngine } from '../scenarios/ScenarioEngine.js';
 import { allScenarios } from '../labs/scenarios.js';
+import { LabHud } from './LabHud.js';
 
 export class ScenarioPanel {
   /**
@@ -26,6 +27,8 @@ export class ScenarioPanel {
     this.scenarios = allScenarios();
     this.scenarioEngine = new ScenarioEngine({ topology, engine });
     this.activeId = null;
+    // Persistent objective card pinned over the canvas while a lab is loaded.
+    this.hud = new LabHud('Objetivo del lab', 'Objetivo');
 
     document
       .querySelector('[data-action="open-labs"]')
@@ -59,7 +62,36 @@ export class ScenarioPanel {
     // A fresh scenario is a clean slate — nothing to undo into.
     if (this.history) this.history.clear();
     this.lastResult = null;
+    this._showObjective(scenario);
     this.render();
+  }
+
+  /**
+   * Shows the always-visible objective card for a loaded lab, so the task
+   * stays on screen while the learner fixes the network in the CLI.
+   * @param {object} scenario
+   */
+  _showObjective(scenario) {
+    this.hud.show({
+      chip: scenario.difficulty,
+      prompt: scenario.objective,
+      hintHtml: scenario.description ? escapeHtml(scenario.description) : null,
+      actions: [
+        {
+          label: 'Comprobar',
+          primary: true,
+          onClick: () => this.hud.setStatus(hudStatus(this.scenarioEngine.evaluate())),
+        },
+        { label: 'Reiniciar', onClick: () => this.loadScenario(this.activeId) },
+        {
+          label: 'Ver detalle',
+          onClick: () => {
+            this.overlay.hidden = false;
+            this.render();
+          },
+        },
+      ],
+    });
   }
 
   render() {
@@ -151,10 +183,15 @@ export class ScenarioPanel {
     detail.appendChild(this._renderHints());
     if (this.lastResult) detail.appendChild(this._renderResults(this.lastResult));
 
+    const workBtn = el('button', 'btn labs-check practice-open');
+    workBtn.textContent = '▶  Trabajar en el emulador';
+    workBtn.addEventListener('click', () => this.close());
+    detail.appendChild(workBtn);
+
     // Tip so the learner knows how to interact with the loaded topology.
     const tip = el('p', 'labs-tip');
     tip.textContent =
-      'Close this dialog to work on the topology (Enter on a device opens its CLI).';
+      'El objetivo queda fijo sobre el lienzo. Abre la CLI de un dispositivo (Enter) y usa Comprobar para validar.';
     detail.appendChild(tip);
 
     return detail;
@@ -225,4 +262,18 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+/**
+ * Turns a ScenarioEngine result into the objective card's live status line.
+ * @param {{passedAll: boolean, score: number, maxScore: number}} result
+ * @returns {{ok: boolean, text: string}}
+ */
+function hudStatus(result) {
+  return {
+    ok: result.passedAll,
+    text: result.passedAll
+      ? '✔ ¡Resuelto! Objetivo cumplido.'
+      : `Objetivos: ${result.score}/${result.maxScore} — sigue configurando`,
+  };
 }

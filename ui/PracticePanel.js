@@ -13,6 +13,7 @@
 
 import { ScenarioEngine } from '../scenarios/ScenarioEngine.js';
 import { allPracticeQuestions } from '../labs/practiceQuestions.js';
+import { LabHud } from './LabHud.js';
 
 export class PracticePanel {
   /**
@@ -38,8 +39,7 @@ export class PracticePanel {
     // persistent objective card (HUD) so the task stays on screen while the
     // learner configures devices via the CLI.
     this.activeQuestion = null;
-    this.hud = null;
-    this.hudMinimized = false;
+    this.hud = new LabHud('Objetivo de la práctica', 'Objetivo');
 
     document
       .querySelector('[data-action="open-practice"]')
@@ -310,92 +310,24 @@ export class PracticePanel {
    * what the lab is asking while they work in the CLI.
    */
   _showObjective() {
-    if (!this.activeQuestion) return;
-    if (!this.hud) {
-      this.hud = el('div', 'practice-hud');
-      document.body.appendChild(this.hud);
-    }
-    this._renderHud();
-  }
-
-  _renderHud() {
     const q = this.activeQuestion;
-    if (!this.hud || !q) return;
-    this.hud.innerHTML = '';
-    this.hud.classList.toggle('minimized', this.hudMinimized);
-
-    const head = el('div', 'practice-hud-head');
-    const title = el('span', 'practice-hud-title');
-    title.textContent = this.hudMinimized ? '🎯 Objetivo' : '🎯 Objetivo de la práctica';
-    head.appendChild(title);
-
-    const controls = el('div', 'practice-hud-controls');
-    const minBtn = el('button', 'btn icon-btn');
-    minBtn.type = 'button';
-    minBtn.title = this.hudMinimized ? 'Expandir' : 'Minimizar';
-    minBtn.textContent = this.hudMinimized ? '▢' : '—';
-    minBtn.addEventListener('click', () => {
-      this.hudMinimized = !this.hudMinimized;
-      this._renderHud();
-    });
-    const closeBtn = el('button', 'btn icon-btn');
-    closeBtn.type = 'button';
-    closeBtn.title = 'Cerrar';
-    closeBtn.textContent = '✕';
-    closeBtn.addEventListener('click', () => this._hideObjective());
-    controls.append(minBtn, closeBtn);
-    head.appendChild(controls);
-    this.hud.appendChild(head);
-
-    if (this.hudMinimized) return;
-
-    const chip = el('span', 'practice-hud-chip');
-    chip.textContent = `${q.domain} · ${q.difficulty}`;
-    this.hud.appendChild(chip);
-
-    const prompt = el('p', 'practice-hud-prompt');
-    prompt.textContent = q.prompt;
-    this.hud.appendChild(prompt);
-
-    if (q.labHint) {
-      const hint = el('p', 'practice-hud-hint');
-      hint.innerHTML = `<strong>Pista:</strong> ${escapeHtml(q.labHint)}`;
-      this.hud.appendChild(hint);
-    }
-
-    const actions = el('div', 'practice-hud-actions');
+    if (!q) return;
+    const actions = [];
     if (q.checks && q.checks.length > 0) {
-      const checkBtn = el('button', 'btn labs-check');
-      checkBtn.type = 'button';
-      checkBtn.textContent = 'Comprobar red';
-      checkBtn.addEventListener('click', () => {
-        this.lastResult = this.scenarioEngine.evaluate();
-        this._renderHud();
+      actions.push({
+        label: 'Comprobar red',
+        primary: true,
+        onClick: () => this.hud.setStatus(hudStatus(this.scenarioEngine.evaluate())),
       });
-      actions.appendChild(checkBtn);
     }
-    const answerBtn = el('button', 'btn');
-    answerBtn.type = 'button';
-    answerBtn.textContent = 'Responder';
-    answerBtn.addEventListener('click', () => this._openQuestion(q.id));
-    actions.appendChild(answerBtn);
-    this.hud.appendChild(actions);
+    actions.push({ label: 'Responder', onClick: () => this._openQuestion(q.id) });
 
-    if (this.lastResult) {
-      const status = el('div', `practice-hud-status ${this.lastResult.passedAll ? 'ok' : 'fail'}`);
-      status.textContent = this.lastResult.passedAll
-        ? '✔ ¡Red correcta! Objetivo cumplido.'
-        : `Objetivos: ${this.lastResult.score}/${this.lastResult.maxScore} — sigue configurando`;
-      this.hud.appendChild(status);
-    }
-  }
-
-  /** Removes the objective card. */
-  _hideObjective() {
-    if (this.hud) {
-      this.hud.remove();
-      this.hud = null;
-    }
+    this.hud.show({
+      chip: `${q.domain} · ${q.difficulty}`,
+      prompt: q.prompt,
+      hintHtml: q.labHint ? `<strong>Pista:</strong> ${escapeHtml(q.labHint)}` : null,
+      actions,
+    });
   }
 
   /**
@@ -430,4 +362,18 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+/**
+ * Turns a ScenarioEngine result into the objective card's live status line.
+ * @param {{passedAll: boolean, score: number, maxScore: number}} result
+ * @returns {{ok: boolean, text: string}}
+ */
+function hudStatus(result) {
+  return {
+    ok: result.passedAll,
+    text: result.passedAll
+      ? '✔ ¡Red correcta! Objetivo cumplido.'
+      : `Objetivos: ${result.score}/${result.maxScore} — sigue configurando`,
+  };
 }
