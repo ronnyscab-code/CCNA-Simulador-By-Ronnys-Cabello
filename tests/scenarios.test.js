@@ -4,7 +4,14 @@ import assert from 'node:assert/strict';
 import { Topology } from '../topology/Topology.js';
 import { PacketEngine } from '../engine/PacketEngine.js';
 import { ScenarioEngine } from '../scenarios/ScenarioEngine.js';
-import { allScenarios, generateAddressingScenarios } from '../labs/scenarios.js';
+import {
+  allScenarios,
+  generateAddressingScenarios,
+  generateGatewayScenarios,
+  generateShutdownScenarios,
+  generateVlanScenarios,
+  generateWrongSubnetScenarios,
+} from '../labs/scenarios.js';
 import { pingSucceeds, interfaceEnabled, resolveNode } from '../scenarios/checks.js';
 
 function freshEngine() {
@@ -79,11 +86,11 @@ describe('ScenarioEngine scoring', () => {
     scenarioEngine.load(scenario);
     assert.equal(scenarioEngine.evaluate().passedAll, false);
 
-    // The scenario targets 192.168.16.12/24 for PC2.
+    // The first scenario targets 192.168.10.12/24 for PC2.
     topology
       .getNode('pc2')
       .device.getInterface('FastEthernet0')
-      .setIp('192.168.16.12', '255.255.255.0');
+      .setIp('192.168.10.12', '255.255.255.0');
     assert.equal(scenarioEngine.evaluate().passedAll, true);
   });
 
@@ -104,6 +111,62 @@ describe('ScenarioEngine scoring', () => {
     const scenarios = generateAddressingScenarios(20);
     assert.equal(scenarios.length, 20);
     assert.equal(new Set(scenarios.map((s) => s.id)).size, 20);
+  });
+
+  test('every generated scenario across all families has a unique id', () => {
+    const all = allScenarios();
+    assert.equal(new Set(all.map((s) => s.id)).size, all.length);
+  });
+
+  test('the catalog now spans several distinct drill families, not one template', () => {
+    const generated = allScenarios().filter((s) => s.generated);
+    const families = new Set(generated.map((s) => s.id.replace(/-\d+$/, '')));
+    assert.ok(families.size >= 5, `expected >= 5 families, got ${[...families].join(', ')}`);
+    assert.ok(generated.length >= 20, `expected a large pool, got ${generated.length}`);
+  });
+});
+
+describe('each generated drill family is broken on load and solvable by its fix', () => {
+  test('gateway family: setting PC2 default gateway restores the ping', () => {
+    const scenario = generateGatewayScenarios(1)[0];
+    const { topology, scenarioEngine } = freshEngine();
+    scenarioEngine.load(scenario);
+    assert.equal(scenarioEngine.evaluate().passedAll, false);
+    // Family 2 uses lanB = 192.168.60.0/24, so the gateway is 192.168.60.1.
+    topology.getNode('pc2').device.defaultGateway = '192.168.60.1';
+    assert.equal(scenarioEngine.evaluate().passedAll, true);
+  });
+
+  test('shutdown family: no shutdown on R1 restores the ping', () => {
+    const scenario = generateShutdownScenarios(1)[0];
+    const { topology, scenarioEngine } = freshEngine();
+    scenarioEngine.load(scenario);
+    assert.equal(scenarioEngine.evaluate().passedAll, false);
+    topology.getNode('r1').device.getInterface('GigabitEthernet0/1').enabled = true;
+    assert.equal(scenarioEngine.evaluate().passedAll, true);
+  });
+
+  test('vlan family: moving PC2 back to the right VLAN restores the ping', () => {
+    const scenario = generateVlanScenarios(1)[0];
+    const { topology, scenarioEngine } = freshEngine();
+    scenarioEngine.load(scenario);
+    assert.equal(scenarioEngine.evaluate().passedAll, false);
+    // Family 4's first drill uses VLAN 10 as the correct VLAN.
+    topology.getNode('sw1').device.getInterface('FastEthernet0/2').accessVlan = 10;
+    assert.equal(scenarioEngine.evaluate().passedAll, true);
+  });
+
+  test('wrong-subnet family: re-addressing PC2 into PC1 subnet restores the ping', () => {
+    const scenario = generateWrongSubnetScenarios(1)[0];
+    const { topology, scenarioEngine } = freshEngine();
+    scenarioEngine.load(scenario);
+    assert.equal(scenarioEngine.evaluate().passedAll, false);
+    // Family 5's first drill targets 172.16.20.12/24 for PC2.
+    topology
+      .getNode('pc2')
+      .device.getInterface('FastEthernet0')
+      .setIp('172.16.20.12', '255.255.255.0');
+    assert.equal(scenarioEngine.evaluate().passedAll, true);
   });
 });
 

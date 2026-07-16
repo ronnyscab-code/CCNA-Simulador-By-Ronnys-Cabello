@@ -17,6 +17,7 @@ import {
   pingFails,
   interfaceEnabled,
   interfaceHasIp,
+  defaultGatewayIs,
   accessVlanIs,
   ospfNeighborUp,
 } from '../scenarios/checks.js';
@@ -229,24 +230,23 @@ function aclRestrictGuest() {
 }
 
 /**
- * Generates a family of "assign the missing address" connectivity drills:
- * two PCs on a switch in the same /24, the second PC missing its IP.
+ * FAMILY 1 — "assign the missing address": two PCs on a switch in the same
+ * /24, PC2 missing its IP. Pure same-subnet host-addressing practice.
  * @param {number} count
  * @returns {object[]}
  */
-export function generateAddressingScenarios(count = 12) {
+export function generateAddressingScenarios(count = 5) {
   const scenarios = [];
   for (let i = 0; i < count; i += 1) {
-    const thirdOctet = 16 + i; // 192.168.16.0, .17.0, ...
-    const subnet = `192.168.${thirdOctet}`;
+    const subnet = `192.168.${10 + i}`;
     const pc1Ip = `${subnet}.11`;
     const pc2Ip = `${subnet}.12`;
     scenarios.push({
-      id: `addressing-${thirdOctet}`,
-      title: `Addressing drill: ${subnet}.0/24`,
+      id: `addressing-${10 + i}`,
+      title: `Direccionamiento: falta la IP de PC2 (${subnet}.0/24)`,
       difficulty: 'Beginner',
-      objective: `Configure PC2 so it can ping PC1 (${pc1Ip}).`,
-      description: `PC1 and PC2 sit on the same switch in ${subnet}.0/24. PC1 is addressed; PC2 has no IP yet. Give PC2 a valid host address (${pc2Ip}) and connectivity should return.`,
+      objective: `Configura PC2 para que haga ping a PC1 (${pc1Ip}).`,
+      description: `PC1 y PC2 están en el mismo switch dentro de ${subnet}.0/24. PC1 ya tiene IP; PC2 no. Asígnale a PC2 una dirección válida (${pc2Ip}) y la conectividad volverá.`,
       generated: true,
       createTopology() {
         const b = new TopologyBuilder();
@@ -256,8 +256,7 @@ export function generateAddressingScenarios(count = 12) {
         b.link('pc1', 'FastEthernet0', 'sw1', 'FastEthernet0/1');
         b.link('pc2', 'FastEthernet0', 'sw1', 'FastEthernet0/2');
         b.ip('pc1', 'FastEthernet0', pc1Ip, MASK24);
-        // The fault: PC2 has no address.
-        b.ip('pc2', 'FastEthernet0', null, null, { enabled: true });
+        b.ip('pc2', 'FastEthernet0', null, null, { enabled: true }); // fault: no IP
         return b.build();
       },
       checks: [
@@ -265,17 +264,205 @@ export function generateAddressingScenarios(count = 12) {
         pingSucceeds('PC1', pc2Ip, { points: 1 }),
       ],
       hints: [
-        `Both hosts must be in ${subnet}.0/24 with mask ${MASK24}.`,
-        `On PC2: interface FastEthernet0, then \`ip address ${pc2Ip} ${MASK24}\`.`,
+        `Ambos hosts deben estar en ${subnet}.0/24 con máscara ${MASK24}.`,
+        `En PC2: interface FastEthernet0, luego \`ip address ${pc2Ip} ${MASK24}\`.`,
       ],
-      explanation: `With both PCs addressed in ${subnet}.0/24 and connected to the same switch (VLAN 1), they share a broadcast domain and ping succeeds — no gateway needed for same-subnet traffic.`,
+      explanation: `Con ambas PC en ${subnet}.0/24 y conectadas al mismo switch (VLAN 1), comparten dominio de difusión y el ping funciona — el tráfico de la misma subred no necesita gateway.`,
     });
   }
   return scenarios;
 }
 
 /**
- * The full catalog: authored scenarios first, then the generated drills.
+ * FAMILY 2 — "the missing default gateway": two LANs joined by R1. PC2 is
+ * addressed but has no default gateway, so it can't leave its subnet.
+ * @param {number} count
+ * @returns {object[]}
+ */
+export function generateGatewayScenarios(count = 5) {
+  const scenarios = [];
+  for (let i = 0; i < count; i += 1) {
+    const lanA = `192.168.${40 + i}`; // PC1's LAN
+    const lanB = `192.168.${60 + i}`; // PC2's LAN
+    const pc1Ip = `${lanA}.10`;
+    const pc2Ip = `${lanB}.10`;
+    const gwB = `${lanB}.1`;
+    scenarios.push({
+      id: `gateway-${40 + i}`,
+      title: `Puerta de enlace: PC2 no puede salir de su subred (${lanB}.0/24)`,
+      difficulty: 'Beginner',
+      objective: `Configura PC2 para que haga ping a PC1 (${pc1Ip}) a través de R1.`,
+      description: `PC1 (${lanA}.0/24) y PC2 (${lanB}.0/24) están en subredes distintas unidas por R1. PC2 ya tiene IP, pero le falta la puerta de enlace, así que no puede alcanzar otra red.`,
+      generated: true,
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 120, y: 200 })
+          .router('r1', 'R1', { x: 360, y: 200 })
+          .pc('pc2', 'PC2', { x: 600, y: 200 });
+        b.link('pc1', 'FastEthernet0', 'r1', 'GigabitEthernet0/0');
+        b.link('r1', 'GigabitEthernet0/1', 'pc2', 'FastEthernet0');
+        b.ip('pc1', 'FastEthernet0', pc1Ip, MASK24).gateway('pc1', `${lanA}.1`);
+        b.ip('r1', 'GigabitEthernet0/0', `${lanA}.1`, MASK24);
+        b.ip('r1', 'GigabitEthernet0/1', gwB, MASK24);
+        b.ip('pc2', 'FastEthernet0', pc2Ip, MASK24); // fault: no default gateway
+        return b.build();
+      },
+      checks: [
+        defaultGatewayIs('PC2', gwB, { points: 1 }),
+        pingSucceeds('PC2', pc1Ip, { points: 2 }),
+      ],
+      hints: [
+        `PC2 está en ${lanB}.0/24; su router local es ${gwB}.`,
+        `En PC2 define la puerta de enlace predeterminada como ${gwB}.`,
+      ],
+      explanation: `Un host solo alcanza otras subredes enviando el tráfico a su puerta de enlace. Sin gateway, PC2 no sabía a quién entregar los paquetes hacia ${lanA}.0/24. Apuntándola a ${gwB} (R1) el ping funciona.`,
+    });
+  }
+  return scenarios;
+}
+
+/**
+ * FAMILY 3 — "the interface that went dark": R1 routes between two LANs but
+ * the port toward PC2 is administratively shut. `no shutdown` fixes it.
+ * @param {number} count
+ * @returns {object[]}
+ */
+export function generateShutdownScenarios(count = 4) {
+  const scenarios = [];
+  for (let i = 0; i < count; i += 1) {
+    const lanA = `10.${1 + i}.1`;
+    const lanB = `10.${1 + i}.2`;
+    const pc1Ip = `${lanA}.10`;
+    const pc2Ip = `${lanB}.10`;
+    scenarios.push({
+      id: `shutdown-${1 + i}`,
+      title: `Interfaz apagada: reactiva el enlace hacia PC2 (${lanB}.0/24)`,
+      difficulty: 'Beginner',
+      objective: `Consigue que PC1 (${pc1Ip}) haga ping a PC2 (${pc2Ip}).`,
+      description: `R1 enruta entre ${lanA}.0/24 y ${lanB}.0/24. El direccionamiento es correcto, pero la interfaz de R1 hacia PC2 está administrativamente apagada.`,
+      generated: true,
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 120, y: 200 })
+          .router('r1', 'R1', { x: 360, y: 200 })
+          .pc('pc2', 'PC2', { x: 600, y: 200 });
+        b.link('pc1', 'FastEthernet0', 'r1', 'GigabitEthernet0/0');
+        b.link('r1', 'GigabitEthernet0/1', 'pc2', 'FastEthernet0');
+        b.ip('pc1', 'FastEthernet0', pc1Ip, MASK24).gateway('pc1', `${lanA}.1`);
+        b.ip('pc2', 'FastEthernet0', pc2Ip, MASK24).gateway('pc2', `${lanB}.1`);
+        b.ip('r1', 'GigabitEthernet0/0', `${lanA}.1`, MASK24);
+        b.ip('r1', 'GigabitEthernet0/1', `${lanB}.1`, MASK24, { enabled: false }); // fault
+        return b.build();
+      },
+      checks: [
+        interfaceEnabled('R1', 'GigabitEthernet0/1', { points: 1 }),
+        pingSucceeds('PC1', pc2Ip, { points: 2 }),
+      ],
+      hints: [
+        'Revisa el estado de las interfaces de R1 con `show ip interface brief`.',
+        'En R1: interface GigabitEthernet0/1, luego `no shutdown`.',
+      ],
+      explanation: `Gi0/1 tenía la IP correcta pero estaba apagada, así que la ruta conectada a ${lanB}.0/24 no existía. \`no shutdown\` levanta la interfaz y restaura la conectividad de extremo a extremo.`,
+    });
+  }
+  return scenarios;
+}
+
+/**
+ * FAMILY 4 — "same subnet, different VLAN": two hosts that should share a
+ * VLAN on SW1 are split apart. Move PC2's port back to PC1's VLAN.
+ * @param {number} count
+ * @returns {object[]}
+ */
+export function generateVlanScenarios(count = 4) {
+  const scenarios = [];
+  for (let i = 0; i < count; i += 1) {
+    const subnet = `192.168.${30 + i}`;
+    const rightVlan = 10 + i * 10;
+    const wrongVlan = rightVlan + 5;
+    const pc2Ip = `${subnet}.12`;
+    scenarios.push({
+      id: `vlan-${30 + i}`,
+      title: `VLAN incorrecta: reúne a los hosts (VLAN ${rightVlan})`,
+      difficulty: 'Intermediate',
+      objective: `Haz que PC1 y PC2 (misma subred ${subnet}.0/24) vuelvan a alcanzarse.`,
+      description: `PC1 y PC2 están en ${subnet}.0/24 en SW1, pero no se hacen ping. Sus puertos de acceso no coinciden en la VLAN: uno está en la VLAN ${rightVlan} y el otro en la ${wrongVlan}.`,
+      generated: true,
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 120, y: 160 })
+          .switch('sw1', 'SW1', { x: 360, y: 260 })
+          .pc('pc2', 'PC2', { x: 600, y: 160 });
+        b.link('pc1', 'FastEthernet0', 'sw1', 'FastEthernet0/1');
+        b.link('pc2', 'FastEthernet0', 'sw1', 'FastEthernet0/2');
+        b.ip('pc1', 'FastEthernet0', `${subnet}.11`, MASK24);
+        b.ip('pc2', 'FastEthernet0', pc2Ip, MASK24);
+        b.accessVlan('sw1', 'FastEthernet0/1', rightVlan);
+        b.accessVlan('sw1', 'FastEthernet0/2', wrongVlan); // fault
+        return b.build();
+      },
+      checks: [
+        accessVlanIs('SW1', 'FastEthernet0/2', rightVlan, { points: 1 }),
+        pingSucceeds('PC1', pc2Ip, { points: 2 }),
+      ],
+      hints: [
+        'Compara la VLAN de acceso de los dos puertos con `show vlan brief`.',
+        `En SW1: interface FastEthernet0/2, luego \`switchport access vlan ${rightVlan}\`.`,
+      ],
+      explanation: `Los puertos de acceso solo reenvían dentro de su VLAN. Con Fa0/2 en la VLAN ${wrongVlan}, sus tramas nunca llegaban a PC1. Al devolver el puerto a la VLAN ${rightVlan} ambos vuelven a compartir dominio de difusión.`,
+    });
+  }
+  return scenarios;
+}
+
+/**
+ * FAMILY 5 — "wrong subnet": PC2 is addressed, but in the wrong /24 (a typo
+ * in the third octet), so it isn't on PC1's subnet. Fix PC2's address.
+ * @param {number} count
+ * @returns {object[]}
+ */
+export function generateWrongSubnetScenarios(count = 4) {
+  const scenarios = [];
+  for (let i = 0; i < count; i += 1) {
+    const subnet = `172.16.${20 + i}`;
+    const pc1Ip = `${subnet}.11`;
+    const correctIp = `${subnet}.12`;
+    const wrongIp = `172.16.${120 + i}.12`; // right host, wrong subnet
+    scenarios.push({
+      id: `wrong-subnet-${20 + i}`,
+      title: `Subred equivocada: corrige la IP de PC2 (${subnet}.0/24)`,
+      difficulty: 'Beginner',
+      objective: `Corrige la dirección de PC2 para que haga ping a PC1 (${pc1Ip}).`,
+      description: `PC1 y PC2 comparten switch y deberían estar en ${subnet}.0/24, pero PC2 quedó configurada como ${wrongIp} — una subred distinta. Ajusta su IP a ${correctIp}.`,
+      generated: true,
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 120, y: 160 })
+          .switch('sw1', 'SW1', { x: 360, y: 260 })
+          .pc('pc2', 'PC2', { x: 600, y: 160 });
+        b.link('pc1', 'FastEthernet0', 'sw1', 'FastEthernet0/1');
+        b.link('pc2', 'FastEthernet0', 'sw1', 'FastEthernet0/2');
+        b.ip('pc1', 'FastEthernet0', pc1Ip, MASK24);
+        b.ip('pc2', 'FastEthernet0', wrongIp, MASK24); // fault: wrong subnet
+        return b.build();
+      },
+      checks: [
+        interfaceHasIp('PC2', 'FastEthernet0', correctIp, MASK24, { points: 1 }),
+        pingSucceeds('PC1', correctIp, { points: 1 }),
+      ],
+      hints: [
+        `PC1 está en ${subnet}.0/24; PC2 debe estar en esa misma subred, no en ${wrongIp}.`,
+        `En PC2: interface FastEthernet0, luego \`ip address ${correctIp} ${MASK24}\`.`,
+      ],
+      explanation: `Aunque PC2 tenía una IP válida, estaba en otra /24, así que para PC1 era un destino remoto sin ruta. Al reasignar ${correctIp} ambos quedan en ${subnet}.0/24 y el ping de la misma subred funciona.`,
+    });
+  }
+  return scenarios;
+}
+
+/**
+ * The full catalog: authored scenarios first, then the generated drill
+ * families (five different skills, not one repeated template).
  * @returns {object[]}
  */
 export function allScenarios() {
@@ -286,5 +473,9 @@ export function allScenarios() {
     ospfMissingNetwork(),
     aclRestrictGuest(),
     ...generateAddressingScenarios(),
+    ...generateGatewayScenarios(),
+    ...generateShutdownScenarios(),
+    ...generateVlanScenarios(),
+    ...generateWrongSubnetScenarios(),
   ];
 }
