@@ -94,11 +94,12 @@ describe('TrainerEngine', () => {
     const engine = freshEngine();
     const now = () => 0;
     engine.now = now;
-    const all = engine.buildStudyQueue({ limit: 999 });
-    assert.equal(all.length, QUESTIONS.length);
+    const poolSize = engine.questions.length;
+    const all = engine.buildStudyQueue({ limit: poolSize + 1 });
+    assert.equal(all.length, poolSize);
     engine.gradeStudyCard(all[0].id, true, Grade.EASY);
-    const after = engine.buildStudyQueue({ limit: 999 });
-    assert.equal(after.length, QUESTIONS.length - 1);
+    const after = engine.buildStudyQueue({ limit: poolSize + 1 });
+    assert.equal(after.length, poolSize - 1);
   });
 
   test('exam scoring computes percent and pass/fail', () => {

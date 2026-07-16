@@ -14,7 +14,11 @@
  */
 
 import { QUESTIONS } from './questions.js';
+import { GENERATED_QUESTIONS } from './generatedQuestions.js';
 import { schedule, isDue, Grade } from './SpacedRepetition.js';
+
+/** The full built-in pool: curated conceptual questions + generated drills. */
+export const DEFAULT_QUESTIONS = Object.freeze([...QUESTIONS, ...GENERATED_QUESTIONS]);
 import { earnedAchievementIds } from './Achievements.js';
 
 /**
@@ -39,7 +43,7 @@ export class TrainerEngine {
    * @param {() => number} [deps.now]
    * @param {() => number} [deps.rng] - injectable RNG for deterministic tests.
    */
-  constructor({ store, questions = QUESTIONS, now = () => Date.now(), rng = Math.random }) {
+  constructor({ store, questions = DEFAULT_QUESTIONS, now = () => Date.now(), rng = Math.random }) {
     this.store = store;
     this.questions = questions;
     this.now = now;

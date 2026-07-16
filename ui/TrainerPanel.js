@@ -14,10 +14,9 @@
  * classes.
  */
 
-import { TrainerEngine } from '../trainer/TrainerEngine.js';
+import { TrainerEngine, DEFAULT_QUESTIONS } from '../trainer/TrainerEngine.js';
 import { TrainerStore } from '../trainer/TrainerStore.js';
 import { ACHIEVEMENTS, getAchievement } from '../trainer/Achievements.js';
-import { QUESTIONS } from '../trainer/questions.js';
 import { parseQuestions } from '../trainer/parseQuestions.js';
 
 export class TrainerPanel {
@@ -48,7 +47,7 @@ export class TrainerPanel {
     const imported = this.store.getImportedQuestions();
     this.engine = new TrainerEngine({
       store: this.store,
-      questions: [...QUESTIONS, ...imported],
+      questions: [...DEFAULT_QUESTIONS, ...imported],
     });
   }
 
