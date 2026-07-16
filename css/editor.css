@@ -1076,3 +1076,26 @@
     z-index: 1500;
   }
 }
+
+/* --- Properties: read-only interface status (Packet-Tracer style) --- */
+.iface-status-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+.iface-status-line .iface-name {
+  font-family: var(--font-family-mono);
+  min-width: 58px;
+  color: var(--color-text);
+}
+.iface-status-line .iface-detail {
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
