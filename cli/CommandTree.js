@@ -44,30 +44,49 @@ export class CommandTree {
   }
 
   /**
-   * Registers a command.
-   * @param {string} path - e.g. "show ip interface brief" or "hostname <name>".
-   * @param {Function} handler - `(context, args) => string | {output?, error?}`.
+   * Walks (creating nodes as needed) to the node for a command path.
+   * @param {string} path
+   * @returns {CommandNode}
    */
-  add(path, handler) {
+  _nodeFor(path) {
     const tokens = path.trim().split(/\s+/);
     let node = this.root;
-
     for (const token of tokens) {
       const paramMatch = token.match(/^<(\w+)(\.\.\.)?>$/);
       if (paramMatch) {
         const [, name, rest] = paramMatch;
-        if (!node.param) {
-          node.param = { name, rest: Boolean(rest), node: new CommandNode() };
-        }
+        if (!node.param) node.param = { name, rest: Boolean(rest), node: new CommandNode() };
         node = node.param.node;
       } else {
         if (!node.literals.has(token)) node.literals.set(token, new CommandNode());
         node = node.literals.get(token);
       }
     }
+    return node;
+  }
 
+  /**
+   * Registers a command.
+   * @param {string} path - e.g. "show ip interface brief" or "hostname <name>".
+   * @param {Function} handler - `(context, args) => string | {output?, error?}`.
+   * @param {string} [description] - IOS-style one-line help for `?` output.
+   */
+  add(path, handler, description = null) {
+    const node = this._nodeFor(path);
     node.handler = handler;
     node.path = path;
+    if (description) node.description = description;
+  }
+
+  /**
+   * Attaches an IOS-style help description to a keyword node (which may be an
+   * intermediate category like `show ip`, not a full command), so `?` lists
+   * it. Creates the node if it does not exist yet.
+   * @param {string} path
+   * @param {string} description
+   */
+  describe(path, description) {
+    this._nodeFor(path).description = description;
   }
 
   /**
@@ -145,9 +164,14 @@ export class CommandTree {
     }
 
     const completions = [...node.literals.keys()].filter((word) => word.startsWith(partial)).sort();
+    const descriptions = {};
+    for (const word of completions) {
+      const child = node.literals.get(word);
+      if (child && child.description) descriptions[word] = child.description;
+    }
     const param = node.param && completions.length === 0 ? node.param.name : null;
     const exact = completions.length === 1 && completions[0] === partial;
-    return { completions, param, exact };
+    return { completions, descriptions, param, exact };
   }
 
   /**

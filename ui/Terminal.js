@@ -135,8 +135,20 @@ export class Terminal {
 
   _showHelp() {
     const line = this.input.value;
-    const { completions, param } = this.session.complete(line);
-    const help = param ? `<${param}>` : completions.join('   ') || '<cr>';
+    const { completions, descriptions, param } = this.session.complete(line);
+    let help;
+    if (param) {
+      help = `  <${param}>`;
+    } else if (completions.length === 0) {
+      help = '  <cr>';
+    } else {
+      const width = Math.max(...completions.map((c) => c.length)) + 2;
+      help = completions
+        .map((c) =>
+          descriptions && descriptions[c] ? `  ${c.padEnd(width)}${descriptions[c]}` : `  ${c}`,
+        )
+        .join('\n');
+    }
     this._print(`${this.session.prompt} ${line}?\n${help}\n`);
     this._scrollToBottom();
   }

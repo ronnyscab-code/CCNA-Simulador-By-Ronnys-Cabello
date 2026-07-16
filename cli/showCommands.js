@@ -61,6 +61,101 @@ export function registerShowCommands(tree) {
   tree.add('show ip ospf interface', (session) => renderOspfInterface(session.device));
 
   tree.add('show version', (session) => renderVersion(session.device));
+
+  // --- Additional `show` commands (switch/router breadth) --------------
+  tree.add('show clock', () => '*00:00:00.000 UTC Mon Jan 1 2001');
+  tree.add('show privilege', (s) => `Current privilege level is ${privilegeLevel(s)}`);
+  tree.add('show history', (s) => (s.commandHistory ?? []).join('\n'));
+  tree.add('show users', () =>
+    [
+      '    Line       User       Host(s)              Idle       Location',
+      '*   0 con 0                idle                 00:00:00',
+    ].join('\n'),
+  );
+  tree.add('show sessions', () => '% No connections open');
+  tree.add('show logging', () =>
+    ['Syslog logging: enabled (0 messages dropped)', '', 'Log Buffer (8192 bytes):'].join('\n'),
+  );
+  tree.add(
+    'show terminal',
+    () => 'Line 0, Location: "", Type: ""\nLength: 24 lines, Width: 80 columns',
+  );
+  tree.add('show ssh', () => '%No SSHv2 server connections running.');
+  tree.add('show ntp status', () => 'Clock is unsynchronized, stratum 16, no reference clock');
+  tree.add('show flash:', () => renderFlash());
+  tree.add('show flash', () => renderFlash());
+  tree.add('show boot', () => 'BOOT variable = flash:\nManual boot = no');
+  tree.add('show port-security', (s) => renderPortSecurity(s.device));
+  tree.add('show vtp status', () => renderVtpStatus());
+  tree.add('show etherchannel summary', () => renderEtherchannelSummary());
+  tree.add('show interfaces status', (s) => renderInterfacesStatus(s));
+  tree.add('show mac-address-table', (s) => renderMacAddressTable(s));
+  tree.add('show ip protocols', (s) => renderIpProtocols(s));
+  tree.add('show ip dhcp binding', () => 'Bindings from all pools not associated with VRF:');
+  tree.add('show cdp neighbors detail', (s) => renderCdpNeighbors(s));
+  tree.add(
+    'show lldp neighbors',
+    () => 'Capability codes:\n    (R) Router, (B) Bridge, (T) Telephone, (S) Switch',
+  );
+  tree.add('show aaa sessions', () => 'Total sessions since last reload: 0');
+  tree.add(
+    'show dtp',
+    () => 'Global DTP information\n  Sending DTP Hello packets every 30 seconds',
+  );
+  tree.add('show snmp', () => 'Chassis: 0\n0 SNMP packets input\n0 SNMP packets output');
+  tree.add(
+    'show storm-control',
+    () => 'Interface  Filter State   Upper        Lower        Current',
+  );
+  tree.add('show tcp', () => '% No TCP connections');
+  tree.add(
+    'show tcp brief',
+    () => 'TCB       Local Address           Foreign Address        (state)',
+  );
+
+  // --- Contextual `?` help descriptions --------------------------------
+  const d = (kw, text) => tree.describe(`show ${kw}`, text);
+  d('aaa', 'Show AAA values');
+  d('access-lists', 'List access lists');
+  d('arp', 'ARP table');
+  d('boot', 'Show boot attributes');
+  d('cdp', 'CDP information');
+  d('clock', 'Display the system clock');
+  d('dhcp', 'DHCP status');
+  d('dtp', 'DTP information');
+  d('etherchannel', 'EtherChannel information');
+  d('flash:', 'Flash file system');
+  d('history', 'Session command history');
+  d('interfaces', 'Interface status and configuration');
+  d('ip', 'IP information');
+  d('lldp', 'LLDP information');
+  d('logging', 'Show the contents of logging buffers');
+  d('mac', 'MAC configuration');
+  d('mac-address-table', 'MAC forwarding table');
+  d('ntp', 'Network time protocol');
+  d('port-security', 'Show secure port information');
+  d('privilege', 'Show current privilege level');
+  d('running-config', 'Current operating configuration');
+  d('sessions', 'Information about Telnet connections');
+  d('snmp', 'SNMP statistics');
+  d('spanning-tree', 'Spanning tree topology');
+  d('ssh', 'Status of SSH server connections');
+  d('startup-config', 'Contents of startup configuration');
+  d('storm-control', 'Show storm control configuration');
+  d('tcp', 'Status of TCP connections');
+  d('terminal', 'Display terminal configuration parameters');
+  d('users', 'Display information about terminal lines');
+  d('version', 'System hardware and software status');
+  d('vlan', 'VLAN status');
+  d('vtp', 'VTP information');
+  // second-level help under `show ip ?` and `show vlan ?`
+  tree.describe('show ip route', 'IP routing table');
+  tree.describe('show ip interface', 'IP interface status and configuration');
+  tree.describe('show ip ospf', 'OSPF information');
+  tree.describe('show ip nat', 'IP NAT information');
+  tree.describe('show ip protocols', 'IP routing protocol process parameters');
+  tree.describe('show vlan brief', 'VTP all VLAN status in brief');
+  tree.describe('show cdp neighbors', 'CDP neighbor entries');
 }
 
 /**
@@ -307,6 +402,122 @@ function renderVersion(device) {
     '',
     `${device.hostname} uptime is 0 minutes`,
   ].join('\n');
+}
+
+/**
+ * @param {import('./CliSession.js').CliSession} session
+ * @returns {number}
+ */
+function privilegeLevel(session) {
+  const mode = session.currentMode ?? '';
+  return mode.startsWith('user') ? 1 : 15;
+}
+
+/**
+ * @returns {string}
+ */
+function renderFlash() {
+  return [
+    'Directory of flash:/',
+    '',
+    '    1  -rw-    16384000   <no date>  ios.bin',
+    '    2  -rw-        1024   <no date>  config.text',
+    '',
+    '64016384 bytes total (47632384 bytes free)',
+  ].join('\n');
+}
+
+/**
+ * @returns {string}
+ */
+function renderVtpStatus() {
+  return [
+    'VTP Version capable             : 1 to 3',
+    'VTP Version running             : 1',
+    'VTP Domain Name                 :',
+    'VTP Pruning Mode                : Disabled',
+    'VTP Traps Generation            : Disabled',
+    'Configuration Revision          : 0',
+  ].join('\n');
+}
+
+/**
+ * @returns {string}
+ */
+function renderEtherchannelSummary() {
+  return [
+    'Flags:  D - down        P - bundled in port-channel',
+    '        I - stand-alone s - suspended',
+    '',
+    'Number of channel-groups in use: 0',
+    'Number of aggregators:           0',
+    '',
+    'Group  Port-channel  Protocol    Ports',
+    '------+-------------+-----------+-----------------------------------------',
+  ].join('\n');
+}
+
+/**
+ * `show port-security` — per-interface secure-port summary (feature not yet
+ * enforced by the engine, but the command is available for study).
+ * @param {import('../devices/Device.js').Device} device
+ * @returns {string}
+ */
+function renderPortSecurity(device) {
+  if (!device.capabilities.switching) {
+    return '% Port security is only available on switches.';
+  }
+  return [
+    'Secure Port  MaxSecureAddr  CurrentAddr  SecurityViolation  Security Action',
+    '                (Count)       (Count)          (Count)',
+    '---------------------------------------------------------------------------',
+    '---------------------------------------------------------------------------',
+    'Total Addresses in System (excluding one mac per port)     : 0',
+    'Max Addresses limit in System (excluding one mac per port) : 4096',
+  ].join('\n');
+}
+
+/**
+ * `show interfaces status` — the switch port table.
+ * @param {import('./CliSession.js').CliSession} session
+ * @returns {string}
+ */
+function renderInterfacesStatus(session) {
+  const { device, topology, node } = session;
+  const usedPorts = new Set();
+  for (const edge of topology.getEdgesForNode(node.id)) {
+    const port = topology.portForNode(edge, node.id);
+    if (port) usedPorts.add(port);
+  }
+
+  const header = 'Port      Name               Status       Vlan       Duplex  Speed Type';
+  const rows = device.interfaces.map((iface) => {
+    const status = usedPorts.has(iface.name)
+      ? iface.enabled
+        ? 'connected'
+        : 'disabled'
+      : 'notconnect';
+    const vlan = iface.switchportMode === 'trunk' ? 'trunk' : String(iface.accessVlan ?? 1);
+    return `${pad(shortName(iface.name), 10)}${pad('', 19)}${pad(status, 13)}${pad(vlan, 11)}${pad('auto', 8)}${pad('auto', 6)}10/100BaseTX`;
+  });
+  return [header, ...rows].join('\n');
+}
+
+/**
+ * `show ip protocols` — a compact view of running routing protocols.
+ * @param {import('./CliSession.js').CliSession} session
+ * @returns {string}
+ */
+function renderIpProtocols(session) {
+  const ospf = session.device.config.ospf;
+  if (!ospf) return '';
+  const lines = [`Routing Protocol is "ospf ${ospf.processId}"`];
+  if (ospf.routerId) lines.push(`  Router ID ${ospf.routerId}`);
+  lines.push('  Routing for Networks:');
+  for (const net of ospf.networks ?? []) {
+    lines.push(`    ${net.address} ${net.wildcard} area ${net.area}`);
+  }
+  return lines.join('\n');
 }
 
 /**
