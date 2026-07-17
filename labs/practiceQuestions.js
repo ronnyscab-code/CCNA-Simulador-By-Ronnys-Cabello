@@ -25,6 +25,7 @@
  */
 
 import { TopologyBuilder } from './builders.js';
+import { extraPracticeQuestions } from './practiceQuestionsExtra.js';
 import {
   pingSucceeds,
   pingFails,
@@ -50,6 +51,13 @@ const DOMAINS = {
  * @returns {object[]}
  */
 export function allPracticeQuestions() {
+  return [...basePracticeQuestions(), ...extraPracticeQuestions()];
+}
+
+/**
+ * @returns {object[]} the original hand-authored hands-on questions.
+ */
+function basePracticeQuestions() {
   return [
     // 1 — bring up an interface
     {
