@@ -88,6 +88,7 @@ export class TrainerEngine {
     const next = schedule(prev, grade, this.now());
     this.store.setCardState(questionId, next);
     this.store.recordAnswer(question?.domain ?? 'unknown', correct);
+    this.store.recordQuestionResult(questionId, correct);
     return { state: next, newAchievements: this._syncAchievements() };
   }
 
@@ -105,14 +106,59 @@ export class TrainerEngine {
   }
 
   /**
+   * Lists the difficulty levels present with their counts.
+   * @returns {Array<{difficulty: string, count: number}>}
+   */
+  availableDifficulties() {
+    const counts = new Map();
+    for (const q of this.questions) {
+      counts.set(q.difficulty, (counts.get(q.difficulty) ?? 0) + 1);
+    }
+    return [...counts.entries()].map(([difficulty, count]) => ({ difficulty, count }));
+  }
+
+  /**
    * Assembles a randomized exam. Does not mutate any state.
-   * @param {{count?: number, domain?: string|null}} [opts]
+   * @param {{count?: number, domain?: string|null, difficulty?: string|null}} [opts]
    * @returns {object[]} the selected questions.
    */
-  buildExam({ count = 10, domain = null } = {}) {
-    const pool = domain ? this.questions.filter((q) => q.domain === domain) : [...this.questions];
+  buildExam({ count = 10, domain = null, difficulty = null } = {}) {
+    let pool = domain ? this.questions.filter((q) => q.domain === domain) : [...this.questions];
+    if (difficulty) pool = pool.filter((q) => q.difficulty === difficulty);
     const shuffled = this._shuffle(pool);
     return shuffled.slice(0, Math.min(count, shuffled.length));
+  }
+
+  /**
+   * Counts questions matching a domain + difficulty (for the setup UI).
+   * @param {{domain?: string|null, difficulty?: string|null}} [opts]
+   * @returns {number}
+   */
+  countMatching({ domain = null, difficulty = null } = {}) {
+    return this.questions.filter(
+      (q) => (!domain || q.domain === domain) && (!difficulty || q.difficulty === difficulty),
+    ).length;
+  }
+
+  // --- Review mode (your mistakes) -------------------------------------
+
+  /**
+   * The questions you last answered incorrectly (across Study and Exam), so
+   * you can drill exactly your weak spots.
+   * @param {{limit?: number}} [opts]
+   * @returns {object[]}
+   */
+  buildReview({ limit = 30 } = {}) {
+    const missed = new Set(this.store.getMissedIds());
+    return this.questions.filter((q) => missed.has(q.id)).slice(0, limit);
+  }
+
+  /**
+   * @returns {number} how many questions are currently in the review pool.
+   */
+  reviewCount() {
+    const ids = new Set(this.questions.map((q) => q.id));
+    return this.store.getMissedIds().filter((id) => ids.has(id)).length;
   }
 
   /**
@@ -130,6 +176,7 @@ export class TrainerEngine {
       const selected = answers[q.id] ?? [];
       const correct = isAnswerCorrect(selected, q.correct);
       this.store.recordAnswer(q.domain, correct);
+      this.store.recordQuestionResult(q.id, correct);
       return { id: q.id, correct };
     });
 

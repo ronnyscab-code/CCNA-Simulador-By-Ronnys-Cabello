@@ -84,6 +84,51 @@ describe('exam configuration (domain + length)', () => {
     assert.ok(exam.length > 0 && exam.length <= 5);
     assert.ok(exam.every((q) => q.domain === domain));
   });
+
+  test('a difficulty-filtered exam only draws that difficulty', () => {
+    const engine = new TrainerEngine({ store: new TrainerStore(memoryStorage()) });
+    const { difficulty } = engine.availableDifficulties()[0];
+    const exam = engine.buildExam({ count: 8, difficulty });
+    assert.ok(exam.length > 0);
+    assert.ok(exam.every((q) => q.difficulty === difficulty));
+  });
+
+  test('countMatching agrees with a domain+difficulty filter', () => {
+    const engine = new TrainerEngine({ store: new TrainerStore(memoryStorage()) });
+    const { domain } = engine.availableDomains()[0];
+    const { difficulty } = engine.availableDifficulties()[0];
+    const expected = DEFAULT_QUESTIONS.filter(
+      (q) => q.domain === domain && q.difficulty === difficulty,
+    ).length;
+    assert.equal(engine.countMatching({ domain, difficulty }), expected);
+  });
+});
+
+describe('review mode (your mistakes)', () => {
+  test('wrong answers enter the review pool and correct ones clear it', () => {
+    const engine = new TrainerEngine({ store: new TrainerStore(memoryStorage()) });
+    assert.equal(engine.reviewCount(), 0);
+
+    const q = engine.questions[0];
+    engine.gradeStudyCard(q.id, false); // answered wrong
+    assert.equal(engine.reviewCount(), 1);
+    assert.equal(engine.buildReview()[0].id, q.id);
+
+    engine.gradeStudyCard(q.id, true); // now correct
+    assert.equal(engine.reviewCount(), 0);
+    assert.equal(engine.buildReview().length, 0);
+  });
+
+  test('an exam records missed questions into the review pool', () => {
+    const engine = new TrainerEngine({ store: new TrainerStore(memoryStorage()) });
+    const exam = engine.buildExam({ count: 3 });
+    const answers = {};
+    exam.forEach((q, i) => {
+      answers[q.id] = i === 0 ? q.correct : ['__wrong__'];
+    });
+    engine.gradeExam(exam, answers);
+    assert.equal(engine.reviewCount(), 2);
+  });
 });
 
 describe('the trainer engine uses the large pool by default', () => {

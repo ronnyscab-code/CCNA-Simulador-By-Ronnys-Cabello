@@ -35,6 +35,7 @@ function emptyData() {
     },
     achievements: [], // unlocked achievement ids
     imported: [], // user-imported questions (private to this browser)
+    missed: [], // ids of questions last answered incorrectly (review pool)
   };
 }
 
@@ -101,6 +102,33 @@ export class TrainerStore {
     const d = (s.byDomain[domain] ??= { attempts: 0, correct: 0 });
     d.attempts += 1;
     if (correct) d.correct += 1;
+    this._save();
+  }
+
+  /**
+   * Tracks whether a specific question was last answered right or wrong, so a
+   * "review your mistakes" pool can be offered. A correct answer clears it.
+   * @param {string} questionId
+   * @param {boolean} correct
+   */
+  recordQuestionResult(questionId, correct) {
+    const missed = new Set(this.data.missed ?? []);
+    if (correct) missed.delete(questionId);
+    else missed.add(questionId);
+    this.data.missed = [...missed];
+    this._save();
+  }
+
+  /**
+   * @returns {string[]} ids of questions last answered incorrectly.
+   */
+  getMissedIds() {
+    return [...(this.data.missed ?? [])];
+  }
+
+  /** Empties the review pool. */
+  clearMissed() {
+    this.data.missed = [];
     this._save();
   }
 

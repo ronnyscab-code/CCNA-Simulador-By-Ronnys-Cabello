@@ -28,8 +28,8 @@ export class TrainerPanel {
     this.view = 'home';
     this.session = null; // per-mode transient state
     this.importResult = null; // { added, errors } after an import attempt
-    // Exam setup: chosen domain (null = all) and length.
-    this.examConfig = { domain: null, count: 10 };
+    // Exam setup: chosen domain/difficulty (null = all) and length.
+    this.examConfig = { domain: null, difficulty: null, count: 10 };
     this.examReviewWrongOnly = false;
 
     document
@@ -81,6 +81,7 @@ export class TrainerPanel {
     const views = {
       home: () => this._renderHome(body),
       study: () => this._renderStudy(body),
+      review: () => this._renderReview(body),
       'exam-setup': () => this._renderExamSetup(body),
       exam: () => this._renderExam(body),
       'exam-results': () => this._renderExamResults(body),
@@ -134,6 +135,14 @@ export class TrainerPanel {
       grid.appendChild(card);
     }
     body.appendChild(grid);
+
+    const missed = this.engine.reviewCount();
+    const reviewBtn = el('button', 'btn trainer-import-btn');
+    reviewBtn.type = 'button';
+    reviewBtn.textContent = missed ? `🔁 Repasar mis fallos (${missed})` : '🔁 Repasar mis fallos';
+    reviewBtn.disabled = missed === 0;
+    reviewBtn.addEventListener('click', () => this._enter('review'));
+    body.appendChild(reviewBtn);
 
     const imported = this.store.getImportedQuestions().length;
     const importBtn = el('button', 'btn trainer-import-btn');
@@ -286,9 +295,13 @@ export class TrainerPanel {
       const questions = this.engine.buildExam({
         count: this.examConfig.count,
         domain: this.examConfig.domain,
+        difficulty: this.examConfig.difficulty,
       });
       this.session = { questions, index: 0, answers: {}, selected: [] };
       this.examReviewWrongOnly = false;
+    } else if (view === 'review') {
+      const queue = this.engine.buildReview({ limit: 30 });
+      this.session = { queue, index: 0, selected: [], answered: false, review: true };
     } else if (view === 'flashcards') {
       const deck = this.engine.buildFlashcards();
       this.session = { deck, index: 0, revealed: false };
@@ -328,22 +341,52 @@ export class TrainerPanel {
     }
     body.appendChild(chips);
 
-    // Length.
-    const poolSize = this.examConfig.domain
-      ? (domains.find((d) => d.domain === this.examConfig.domain)?.count ?? 0)
-      : totalCount;
+    // Difficulty filter.
+    const diffTitle = el('div', 'prop-group-title');
+    diffTitle.textContent = 'Dificultad';
+    body.appendChild(diffTitle);
+    const diffChips = el('div', 'practice-filters');
+    const diffs = this.engine.availableDifficulties();
+    const diffOptions = [{ difficulty: null, label: 'Todas' }, ...diffs];
+    for (const opt of diffOptions) {
+      const active = this.examConfig.difficulty === opt.difficulty;
+      const chip = el('button', `practice-chip${active ? ' active' : ''}`);
+      chip.type = 'button';
+      chip.textContent = opt.label ?? opt.difficulty;
+      chip.addEventListener('click', () => {
+        this.examConfig.difficulty = opt.difficulty;
+        this.render();
+      });
+      diffChips.appendChild(chip);
+    }
+    body.appendChild(diffChips);
+
+    // Length (respects domain + difficulty).
+    const poolSize = this.engine.countMatching({
+      domain: this.examConfig.domain,
+      difficulty: this.examConfig.difficulty,
+    });
     const lenTitle = el('div', 'prop-group-title');
     lenTitle.textContent = 'Número de preguntas';
     body.appendChild(lenTitle);
 
     const lenChips = el('div', 'practice-filters');
-    const lengths = [10, 20, 40, poolSize].filter((n, i, a) => n > 0 && a.indexOf(n) === i);
-    for (const n of lengths) {
+    // Cap each preset to the pool, then de-duplicate by the resulting value so
+    // a small pool doesn't render "Todas (12)" three times.
+    const seen = new Set();
+    const lengths = [];
+    for (const n of [10, 20, 40, poolSize]) {
       const capped = Math.min(n, poolSize);
+      if (capped > 0 && !seen.has(capped)) {
+        seen.add(capped);
+        lengths.push(capped);
+      }
+    }
+    for (const capped of lengths) {
       const active = this.examConfig.count === capped;
       const chip = el('button', `practice-chip${active ? ' active' : ''}`);
       chip.type = 'button';
-      chip.textContent = n >= poolSize ? `Todas (${poolSize})` : String(n);
+      chip.textContent = capped >= poolSize ? `Todas (${poolSize})` : String(capped);
       chip.addEventListener('click', () => {
         this.examConfig.count = capped;
         this.render();
@@ -353,13 +396,50 @@ export class TrainerPanel {
     body.appendChild(lenChips);
 
     const start = el('button', 'btn labs-check');
-    start.textContent = `Comenzar examen (${Math.min(this.examConfig.count, poolSize)} preguntas)`;
+    const startCount = Math.min(this.examConfig.count, poolSize);
+    start.textContent =
+      poolSize === 0
+        ? 'No hay preguntas para ese filtro'
+        : `Comenzar examen (${startCount} preguntas)`;
+    start.disabled = poolSize === 0;
     start.style.marginTop = 'var(--space-3)';
     start.addEventListener('click', () => {
-      this.examConfig.count = Math.min(this.examConfig.count, poolSize) || 10;
+      this.examConfig.count = startCount || 10;
       this._enter('exam');
     });
     body.appendChild(start);
+  }
+
+  // --- Review your mistakes --------------------------------------------
+
+  _renderReview(body) {
+    this._backButton(body);
+    const s = this.session;
+    if (!s.queue.length) {
+      body.appendChild(msg('¡Sin fallos pendientes! Cuando falles preguntas aparecerán aquí. 🎉'));
+      return;
+    }
+    if (s.index >= s.queue.length) {
+      body.appendChild(msg(`Repaso completo — ${s.queue.length} preguntas revisadas.`));
+      const home = el('button', 'btn labs-check');
+      home.textContent = 'Volver al menú';
+      home.style.marginTop = 'var(--space-3)';
+      home.addEventListener('click', () => {
+        this.view = 'home';
+        this.session = null;
+        this.render();
+      });
+      body.appendChild(home);
+      return;
+    }
+
+    const q = s.queue[s.index];
+    body.appendChild(progress(s.index + 1, s.queue.length, 'Repaso de fallos'));
+    body.appendChild(keyHint());
+    this._renderQuestion(body, q, s, () => {
+      const correct = this._isSelectionCorrect(q, s.selected);
+      this._toast(this.engine.gradeStudyCard(q.id, correct).newAchievements);
+    });
   }
 
   // --- Study ------------------------------------------------------------
@@ -736,7 +816,7 @@ export class TrainerPanel {
       return;
     }
 
-    if (this.view === 'study') {
+    if (this.view === 'study' || this.view === 'review') {
       if (s.index >= s.queue.length) return;
       const q = s.queue[s.index];
       if (!q) return;
