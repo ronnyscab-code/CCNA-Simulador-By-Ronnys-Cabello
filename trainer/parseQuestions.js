@@ -139,19 +139,28 @@ function parseText(raw) {
     let explanation = '';
 
     for (const line of lines) {
+      if (!line) continue;
       const qm = line.match(/^(?:Q|P|Pregunta)\s*[:.\-)]\s*(.+)/i);
       const cm = line.match(/^([A-Ha-h])\s*[).:-]\s*(.+)/);
-      const rm = line.match(/^(?:R|Respuesta|Answer)\s*[:.\-)]\s*(.+)/i);
+      const rm = line.match(/^(?:R|Respuesta|Answer|Correct(?:\s+answer)?)\s*[:.\-)]\s*(.+)/i);
       const em = line.match(/^(?:E|Explicaci[oó]n|Explanation)\s*[:.\-)]\s*(.+)/i);
       if (qm) prompt = qm[1].trim();
       else if (rm) correct = rm[1].trim();
       else if (em) explanation = em[1].trim();
       else if (cm) choices.push({ id: cm[1].toLowerCase(), text: cm[2].trim() });
-      else if (prompt && choices.length === 0) prompt += ` ${line}`; // wrapped prompt
+      else if (choices.length === 0) {
+        // A line before any choice, with no marker, is the prompt (or its
+        // continuation). Supports exam-style blocks with no "Q:" prefix, e.g.
+        // "1. What command…" followed by "A. …" / "B. …" / "Answer: A".
+        prompt = prompt ? `${prompt} ${line}` : line;
+      }
     }
 
+    // Drop a leading question number ("1." / "12)") from an unprefixed prompt.
+    if (prompt) prompt = prompt.replace(/^\s*\d+\s*[.)]\s*/, '').trim();
+
     if (!prompt) {
-      errors.push(`Bloque ${index + 1}: no se encontró el enunciado (usa "Q: ...").`);
+      errors.push(`Bloque ${index + 1}: no se encontró el enunciado.`);
       return;
     }
     if (choices.length < 2) {

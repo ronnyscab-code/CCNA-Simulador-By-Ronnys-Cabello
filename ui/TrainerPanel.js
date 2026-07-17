@@ -18,6 +18,7 @@ import { TrainerEngine, DEFAULT_QUESTIONS } from '../trainer/TrainerEngine.js';
 import { TrainerStore } from '../trainer/TrainerStore.js';
 import { ACHIEVEMENTS, getAchievement } from '../trainer/Achievements.js';
 import { parseQuestions } from '../trainer/parseQuestions.js';
+import { extractPdfText } from '../trainer/pdfText.js';
 
 export class TrainerPanel {
   constructor() {
@@ -146,6 +147,28 @@ export class TrainerPanel {
 
   // --- Import (private, local) ------------------------------------------
 
+  /**
+   * Reads a PDF entirely in the browser, extracts its text, and drops it into
+   * the import textarea. Nothing leaves the device.
+   * @param {File} f
+   * @param {HTMLTextAreaElement} textarea
+   * @param {HTMLElement} status
+   */
+  async _extractPdfInto(f, textarea, status) {
+    status.hidden = false;
+    status.textContent = 'Extrayendo texto del PDF… (se procesa en tu navegador)';
+    try {
+      const buffer = await f.arrayBuffer();
+      const text = await extractPdfText(buffer);
+      textarea.value = text;
+      status.textContent = text.trim()
+        ? 'Texto extraído. Revísalo/edítalo abajo y pulsa "Añadir preguntas".'
+        : 'No se pudo extraer texto (¿PDF escaneado o cifrado?). Copia y pega el texto manualmente.';
+    } catch {
+      status.textContent = 'No se pudo leer el PDF. Copia y pega el texto manualmente.';
+    }
+  }
+
   _renderImport(body) {
     this._backButton(body);
 
@@ -166,26 +189,35 @@ export class TrainerPanel {
     help.innerHTML =
       '<strong>Formato de texto</strong> (una pregunta por bloque, separadas por una línea en blanco o <code>---</code>):<br>' +
       '<pre class="trainer-format">Q: ¿Qué comando asigna una IP a la interfaz?\nA) ip address 10.0.0.1 255.255.255.0\nB) ip 10.0.0.1\nC) address 10.0.0.1\nR: A\nE: (explicación opcional)</pre>' +
-      'También aceptas <strong>JSON</strong> (array de objetos con prompt, choices, correct, explanation).';
+      'El enunciado también puede ir sin <code>Q:</code> (p. ej. «1. …») y la respuesta como <code>Answer: A</code>. ' +
+      'Aceptas <strong>JSON</strong> (array con prompt, choices, correct, explanation) y <strong>PDF</strong> de texto ' +
+      '(se extrae en tu navegador; revísalo antes de añadir).';
     body.appendChild(help);
 
     // File input.
     const fileField = el('div', 'prop-field');
     const fileLabel = el('label');
-    fileLabel.textContent = 'Sube un archivo (.txt o .json)';
+    fileLabel.textContent = 'Sube un archivo (.txt, .json o .pdf)';
     const file = el('input', 'prop-input');
     file.type = 'file';
-    file.accept = '.txt,.json,text/plain,application/json';
+    file.accept = '.txt,.json,.pdf,text/plain,application/json,application/pdf';
+    const fileStatus = el('p', 'labs-tip');
+    fileStatus.hidden = true;
     file.addEventListener('change', () => {
       const f = file.files?.[0];
       if (!f) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        textarea.value = String(reader.result);
-      };
-      reader.readAsText(f);
+      const isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+      if (isPdf) {
+        this._extractPdfInto(f, textarea, fileStatus);
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          textarea.value = String(reader.result);
+        };
+        reader.readAsText(f);
+      }
     });
-    fileField.append(fileLabel, file);
+    fileField.append(fileLabel, file, fileStatus);
     body.appendChild(fileField);
 
     // Paste area.
