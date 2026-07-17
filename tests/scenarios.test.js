@@ -11,6 +11,10 @@ import {
   generateShutdownScenarios,
   generateVlanScenarios,
   generateWrongSubnetScenarios,
+  generateDefaultRouteScenarios,
+  generateWrongNextHopScenarios,
+  generateTrunkScenarios,
+  generateOspfTransitScenarios,
 } from '../labs/scenarios.js';
 import { pingSucceeds, interfaceEnabled, resolveNode } from '../scenarios/checks.js';
 
@@ -121,8 +125,21 @@ describe('ScenarioEngine scoring', () => {
   test('the catalog now spans several distinct drill families, not one template', () => {
     const generated = allScenarios().filter((s) => s.generated);
     const families = new Set(generated.map((s) => s.id.replace(/-\d+$/, '')));
-    assert.ok(families.size >= 5, `expected >= 5 families, got ${[...families].join(', ')}`);
-    assert.ok(generated.length >= 20, `expected a large pool, got ${generated.length}`);
+    assert.ok(families.size >= 9, `expected >= 9 families, got ${[...families].join(', ')}`);
+    assert.ok(generated.length >= 45, `expected a large pool, got ${generated.length}`);
+  });
+
+  test('every checked scenario in the catalog starts unsolved', () => {
+    for (const scenario of allScenarios()) {
+      if (!scenario.checks || scenario.checks.length === 0) continue;
+      const { scenarioEngine } = freshEngine();
+      scenarioEngine.load(scenario);
+      assert.equal(
+        scenarioEngine.evaluate().passedAll,
+        false,
+        `${scenario.id} should start unsolved`,
+      );
+    }
   });
 });
 
@@ -166,6 +183,54 @@ describe('each generated drill family is broken on load and solvable by its fix'
       .getNode('pc2')
       .device.getInterface('FastEthernet0')
       .setIp('172.16.20.12', '255.255.255.0');
+    assert.equal(scenarioEngine.evaluate().passedAll, true);
+  });
+
+  test('default-route family: a default route lets PC1 reach the Internet host', () => {
+    const scenario = generateDefaultRouteScenarios(1)[0];
+    const { topology, scenarioEngine } = freshEngine();
+    scenarioEngine.load(scenario);
+    assert.equal(scenarioEngine.evaluate().passedAll, false);
+    topology.getNode('r1').device.config.staticRoutes.push({
+      prefix: '0.0.0.0',
+      mask: '0.0.0.0',
+      nextHop: '10.10.0.2',
+    });
+    assert.equal(scenarioEngine.evaluate().passedAll, true);
+  });
+
+  test('wrong-nexthop family: fixing the next-hop restores the ping', () => {
+    const scenario = generateWrongNextHopScenarios(1)[0];
+    const { topology, scenarioEngine } = freshEngine();
+    scenarioEngine.load(scenario);
+    assert.equal(scenarioEngine.evaluate().passedAll, false);
+    const route = topology
+      .getNode('r1')
+      .device.config.staticRoutes.find((r) => r.prefix === '172.20.0.0');
+    route.nextHop = '10.20.0.2';
+    assert.equal(scenarioEngine.evaluate().passedAll, true);
+  });
+
+  test('trunk family: trunking the inter-switch link restores the ping', () => {
+    const scenario = generateTrunkScenarios(1)[0];
+    const { topology, scenarioEngine } = freshEngine();
+    scenarioEngine.load(scenario);
+    assert.equal(scenarioEngine.evaluate().passedAll, false);
+    topology.getNode('sw1').device.getInterface('GigabitEthernet0/1').switchportMode = 'trunk';
+    topology.getNode('sw2').device.getInterface('GigabitEthernet0/1').switchportMode = 'trunk';
+    assert.equal(scenarioEngine.evaluate().passedAll, true);
+  });
+
+  test('ospf-transit family: advertising the transit link forms the adjacency', () => {
+    const scenario = generateOspfTransitScenarios(1)[0];
+    const { topology, scenarioEngine } = freshEngine();
+    scenarioEngine.load(scenario);
+    assert.equal(scenarioEngine.evaluate().passedAll, false);
+    topology.getNode('r1').device.config.ospf.networks.push({
+      address: '10.30.0.0',
+      wildcard: '0.0.0.3',
+      area: 0,
+    });
     assert.equal(scenarioEngine.evaluate().passedAll, true);
   });
 });

@@ -23,6 +23,7 @@ import {
 } from '../scenarios/checks.js';
 
 const MASK24 = '255.255.255.0';
+const MASK30 = '255.255.255.252';
 
 /**
  * 1 — A shut-down router interface breaks connectivity between two subnets.
@@ -235,7 +236,7 @@ function aclRestrictGuest() {
  * @param {number} count
  * @returns {object[]}
  */
-export function generateAddressingScenarios(count = 5) {
+export function generateAddressingScenarios(count = 8) {
   const scenarios = [];
   for (let i = 0; i < count; i += 1) {
     const subnet = `192.168.${10 + i}`;
@@ -279,7 +280,7 @@ export function generateAddressingScenarios(count = 5) {
  * @param {number} count
  * @returns {object[]}
  */
-export function generateGatewayScenarios(count = 5) {
+export function generateGatewayScenarios(count = 8) {
   const scenarios = [];
   for (let i = 0; i < count; i += 1) {
     const lanA = `192.168.${40 + i}`; // PC1's LAN
@@ -327,7 +328,7 @@ export function generateGatewayScenarios(count = 5) {
  * @param {number} count
  * @returns {object[]}
  */
-export function generateShutdownScenarios(count = 4) {
+export function generateShutdownScenarios(count = 6) {
   const scenarios = [];
   for (let i = 0; i < count; i += 1) {
     const lanA = `10.${1 + i}.1`;
@@ -374,7 +375,7 @@ export function generateShutdownScenarios(count = 4) {
  * @param {number} count
  * @returns {object[]}
  */
-export function generateVlanScenarios(count = 4) {
+export function generateVlanScenarios(count = 6) {
   const scenarios = [];
   for (let i = 0; i < count; i += 1) {
     const subnet = `192.168.${30 + i}`;
@@ -421,7 +422,7 @@ export function generateVlanScenarios(count = 4) {
  * @param {number} count
  * @returns {object[]}
  */
-export function generateWrongSubnetScenarios(count = 4) {
+export function generateWrongSubnetScenarios(count = 6) {
   const scenarios = [];
   for (let i = 0; i < count; i += 1) {
     const subnet = `172.16.${20 + i}`;
@@ -461,8 +462,231 @@ export function generateWrongSubnetScenarios(count = 4) {
 }
 
 /**
+ * FAMILY 6 — "no default route": R1 is a border router that knows its LAN and
+ * the link to R2, but has no gateway of last resort, so it can't reach the
+ * Internet host behind R2. Fix: a default route toward R2.
+ * @param {number} count
+ * @returns {object[]}
+ */
+export function generateDefaultRouteScenarios(count = 4) {
+  const scenarios = [];
+  for (let i = 0; i < count; i += 1) {
+    const lan = `192.168.${80 + i}`;
+    const pc1Ip = `${lan}.10`;
+    const t1 = `10.10.${i}.1`;
+    const t2 = `10.10.${i}.2`;
+    const inet = '8.8.8.8';
+    scenarios.push({
+      id: `default-route-${80 + i}`,
+      title: `Ruta por defecto: R1 no sale a Internet (${lan}.0/24)`,
+      difficulty: 'Intermediate',
+      objective: `Configura R1 para que PC1 (${pc1Ip}) alcance el host de Internet ${inet}.`,
+      description: `R1 es el router de borde: conoce su LAN y el enlace a R2, pero no tiene ruta para lo desconocido, así que el tráfico a ${inet} no sale.`,
+      generated: true,
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 80, y: 220 })
+          .router('r1', 'R1', { x: 280, y: 220 })
+          .router('r2', 'R2', { x: 520, y: 220 })
+          .pc('inet', 'INET', { x: 740, y: 220 });
+        b.link('pc1', 'FastEthernet0', 'r1', 'GigabitEthernet0/0');
+        b.link('r1', 'GigabitEthernet0/1', 'r2', 'GigabitEthernet0/0');
+        b.link('r2', 'GigabitEthernet0/1', 'inet', 'FastEthernet0');
+        b.ip('pc1', 'FastEthernet0', pc1Ip, MASK24).gateway('pc1', `${lan}.1`);
+        b.ip('r1', 'GigabitEthernet0/0', `${lan}.1`, MASK24);
+        b.ip('r1', 'GigabitEthernet0/1', t1, MASK30);
+        b.ip('r2', 'GigabitEthernet0/0', t2, MASK30);
+        b.ip('r2', 'GigabitEthernet0/1', '8.8.8.1', MASK24);
+        b.ip('inet', 'FastEthernet0', inet, MASK24).gateway('inet', '8.8.8.1');
+        b.topology.getNode('r2').device.config.staticRoutes.push({
+          prefix: `${lan}.0`,
+          mask: MASK24,
+          nextHop: t1,
+        });
+        return b.build();
+      },
+      checks: [pingSucceeds('PC1', inet, { points: 2 })],
+      hints: [
+        'En routers se usa `ip route`, no `ip default-gateway` (eso es para hosts).',
+        `En R1: \`ip route 0.0.0.0 0.0.0.0 ${t2}\`.`,
+      ],
+      explanation: `La ruta por defecto (0.0.0.0/0) es el "gateway of last resort". Apuntándola a ${t2} (R2), R1 reenvía todo lo desconocido y PC1 alcanza ${inet}.`,
+    });
+  }
+  return scenarios;
+}
+
+/**
+ * FAMILY 7 — "wrong next-hop": R1 has a static route to the remote LAN, but it
+ * points at a neighbor that doesn't exist, so the packet is dropped. Fix the
+ * next-hop.
+ * @param {number} count
+ * @returns {object[]}
+ */
+export function generateWrongNextHopScenarios(count = 4) {
+  const scenarios = [];
+  for (let i = 0; i < count; i += 1) {
+    const lan = `192.168.${90 + i}`;
+    const remote = `172.20.${i}`;
+    const t1 = `10.20.${i}.1`;
+    const t2 = `10.20.${i}.2`;
+    const badNextHop = `10.20.${i}.9`;
+    const pc1Ip = `${lan}.10`;
+    const pc2Ip = `${remote}.10`;
+    scenarios.push({
+      id: `wrong-nexthop-${90 + i}`,
+      title: `Siguiente salto equivocado: la ruta existe pero apunta mal (${remote}.0/24)`,
+      difficulty: 'Intermediate',
+      objective: `Corrige la ruta estática de R1 para que PC1 (${pc1Ip}) haga ping a PC2 (${pc2Ip}).`,
+      description: `R1 SÍ tiene una ruta a ${remote}.0/24, pero apunta a ${badNextHop}, que no existe. El vecino real R2 es ${t2}.`,
+      generated: true,
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 80, y: 220 })
+          .router('r1', 'R1', { x: 280, y: 220 })
+          .router('r2', 'R2', { x: 520, y: 220 })
+          .pc('pc2', 'PC2', { x: 740, y: 220 });
+        b.link('pc1', 'FastEthernet0', 'r1', 'GigabitEthernet0/0');
+        b.link('r1', 'GigabitEthernet0/1', 'r2', 'GigabitEthernet0/0');
+        b.link('r2', 'GigabitEthernet0/1', 'pc2', 'FastEthernet0');
+        b.ip('pc1', 'FastEthernet0', pc1Ip, MASK24).gateway('pc1', `${lan}.1`);
+        b.ip('pc2', 'FastEthernet0', pc2Ip, MASK24).gateway('pc2', `${remote}.1`);
+        b.ip('r1', 'GigabitEthernet0/0', `${lan}.1`, MASK24);
+        b.ip('r1', 'GigabitEthernet0/1', t1, MASK30);
+        b.ip('r2', 'GigabitEthernet0/0', t2, MASK30);
+        b.ip('r2', 'GigabitEthernet0/1', `${remote}.1`, MASK24);
+        b.topology.getNode('r1').device.config.staticRoutes.push({
+          prefix: `${remote}.0`,
+          mask: MASK24,
+          nextHop: badNextHop, // fault
+        });
+        b.topology.getNode('r2').device.config.staticRoutes.push({
+          prefix: `${lan}.0`,
+          mask: MASK24,
+          nextHop: t1,
+        });
+        return b.build();
+      },
+      checks: [pingSucceeds('PC1', pc2Ip, { points: 2 })],
+      hints: [
+        'La ruta aparece en `show ip route` pero el siguiente salto es inalcanzable.',
+        `En R1: \`no ip route ${remote}.0 ${MASK24} ${badNextHop}\`, luego \`ip route ${remote}.0 ${MASK24} ${t2}\`.`,
+      ],
+      explanation: `El siguiente salto (${badNextHop}) no existía, así que R1 no podía entregar el paquete. Apuntando la ruta al vecino real (${t2}) la conectividad se restablece.`,
+    });
+  }
+  return scenarios;
+}
+
+/**
+ * FAMILY 8 — "trunk needed": two PCs in the same VLAN on different switches
+ * can't reach each other because the inter-switch link is an access port.
+ * Fix: make it a trunk.
+ * @param {number} count
+ * @returns {object[]}
+ */
+export function generateTrunkScenarios(count = 4) {
+  const scenarios = [];
+  for (let i = 0; i < count; i += 1) {
+    const subnet = `192.168.${50 + i}`;
+    const vlan = 10 + i;
+    const pc1Ip = `${subnet}.11`;
+    const pc2Ip = `${subnet}.12`;
+    scenarios.push({
+      id: `trunk-${50 + i}`,
+      title: `Troncal ausente: la VLAN ${vlan} no cruza entre switches (${subnet}.0/24)`,
+      difficulty: 'Intermediate',
+      objective: `Haz que PC1 (${pc1Ip}) y PC2 (${pc2Ip}), ambos en la VLAN ${vlan}, vuelvan a alcanzarse.`,
+      description: `PC1 y PC2 están en la VLAN ${vlan} pero en switches distintos. El enlace SW1–SW2 (Gi0/1) sigue en modo acceso (VLAN 1), así que la VLAN ${vlan} no lo atraviesa.`,
+      generated: true,
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 100, y: 160 })
+          .switch('sw1', 'SW1', { x: 300, y: 260 })
+          .switch('sw2', 'SW2', { x: 520, y: 260 })
+          .pc('pc2', 'PC2', { x: 720, y: 160 });
+        b.link('pc1', 'FastEthernet0', 'sw1', 'FastEthernet0/1');
+        b.link('sw1', 'GigabitEthernet0/1', 'sw2', 'GigabitEthernet0/1');
+        b.link('sw2', 'FastEthernet0/1', 'pc2', 'FastEthernet0');
+        b.ip('pc1', 'FastEthernet0', pc1Ip, MASK24);
+        b.ip('pc2', 'FastEthernet0', pc2Ip, MASK24);
+        b.accessVlan('sw1', 'FastEthernet0/1', vlan);
+        b.accessVlan('sw2', 'FastEthernet0/1', vlan);
+        b.accessVlan('sw1', 'GigabitEthernet0/1', 1);
+        b.accessVlan('sw2', 'GigabitEthernet0/1', 1);
+        return b.build();
+      },
+      checks: [pingSucceeds('PC1', pc2Ip, { points: 2 })],
+      hints: [
+        'Un enlace entre switches que lleva varias VLANs debe ser troncal (802.1Q).',
+        'En SW1 y SW2: `interface Gi0/1`, `switchport mode trunk`.',
+      ],
+      explanation: `Un puerto de acceso solo transporta una VLAN. Convirtiendo Gi0/1 en troncal en ambos extremos, la VLAN ${vlan} cruza el enlace y PC1 alcanza a PC2.`,
+    });
+  }
+  return scenarios;
+}
+
+/**
+ * FAMILY 9 — "OSPF transit not advertised": R1's OSPF doesn't cover the transit
+ * link, so no adjacency forms and it never learns R2's LAN. Fix: add the
+ * transit network statement.
+ * @param {number} count
+ * @returns {object[]}
+ */
+export function generateOspfTransitScenarios(count = 4) {
+  const scenarios = [];
+  for (let i = 0; i < count; i += 1) {
+    const lan = `192.168.${100 + i}`;
+    const remote = `172.30.${i}`;
+    const t1 = `10.30.${i}.1`;
+    const t2 = `10.30.${i}.2`;
+    const transitNet = `10.30.${i}.0`;
+    const pc1Ip = `${lan}.10`;
+    const pc2Ip = `${remote}.10`;
+    scenarios.push({
+      id: `ospf-transit-${100 + i}`,
+      title: `Tránsito OSPF sin anunciar: no hay vecindad (${remote}.0/24)`,
+      difficulty: 'Advanced',
+      objective: `Consigue que R1 forme vecindad OSPF y PC1 (${pc1Ip}) alcance a PC2 (${pc2Ip}).`,
+      description: `R1 solo anuncia su LAN en OSPF; le falta el enlace de tránsito ${transitNet}/30. Sin él no envía HELLO por ahí, no hay adyacencia y nunca aprende ${remote}.0/24.`,
+      generated: true,
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 80, y: 220 })
+          .router('r1', 'R1', { x: 280, y: 220 })
+          .router('r2', 'R2', { x: 520, y: 220 })
+          .pc('pc2', 'PC2', { x: 740, y: 220 });
+        b.link('pc1', 'FastEthernet0', 'r1', 'GigabitEthernet0/0');
+        b.link('r1', 'GigabitEthernet0/1', 'r2', 'GigabitEthernet0/0');
+        b.link('r2', 'GigabitEthernet0/1', 'pc2', 'FastEthernet0');
+        b.ip('pc1', 'FastEthernet0', pc1Ip, MASK24).gateway('pc1', `${lan}.1`);
+        b.ip('pc2', 'FastEthernet0', pc2Ip, MASK24).gateway('pc2', `${remote}.1`);
+        b.ip('r1', 'GigabitEthernet0/0', `${lan}.1`, MASK24);
+        b.ip('r1', 'GigabitEthernet0/1', t1, MASK30);
+        b.ip('r2', 'GigabitEthernet0/0', t2, MASK30);
+        b.ip('r2', 'GigabitEthernet0/1', `${remote}.1`, MASK24);
+        b.ospf('r1', 1, [{ address: `${lan}.0`, wildcard: '0.0.0.255', area: 0 }]); // falta el tránsito
+        b.ospf('r2', 1, [
+          { address: transitNet, wildcard: '0.0.0.3', area: 0 },
+          { address: `${remote}.0`, wildcard: '0.0.0.255', area: 0 },
+        ]);
+        return b.build();
+      },
+      checks: [ospfNeighborUp('R1', { points: 1 }), pingSucceeds('PC1', pc2Ip, { points: 2 })],
+      hints: [
+        'Sin `network` que cubra la interfaz de tránsito, OSPF no forma adyacencia por ahí.',
+        `En R1: \`router ospf 1\`, \`network ${transitNet} 0.0.0.3 area 0\`.`,
+      ],
+      explanation: `La wildcard de un /30 es 0.0.0.3. Anunciando ${transitNet} 0.0.0.3, R1 forma la adyacencia con R2, aprende ${remote}.0/24 y el ping funciona.`,
+    });
+  }
+  return scenarios;
+}
+
+/**
  * The full catalog: authored scenarios first, then the generated drill
- * families (five different skills, not one repeated template).
+ * families (nine different skills, not one repeated template).
  * @returns {object[]}
  */
 export function allScenarios() {
@@ -477,5 +701,9 @@ export function allScenarios() {
     ...generateShutdownScenarios(),
     ...generateVlanScenarios(),
     ...generateWrongSubnetScenarios(),
+    ...generateDefaultRouteScenarios(),
+    ...generateWrongNextHopScenarios(),
+    ...generateTrunkScenarios(),
+    ...generateOspfTransitScenarios(),
   ];
 }
