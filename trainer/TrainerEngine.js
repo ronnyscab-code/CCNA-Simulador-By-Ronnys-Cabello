@@ -94,6 +94,17 @@ export class TrainerEngine {
   // --- Exam mode --------------------------------------------------------
 
   /**
+   * Lists the domains present in the pool with how many questions each holds,
+   * so the UI can offer a "study this domain" filter.
+   * @returns {Array<{domain: string, count: number}>}
+   */
+  availableDomains() {
+    const counts = new Map();
+    for (const q of this.questions) counts.set(q.domain, (counts.get(q.domain) ?? 0) + 1);
+    return [...counts.entries()].map(([domain, count]) => ({ domain, count }));
+  }
+
+  /**
    * Assembles a randomized exam. Does not mutate any state.
    * @param {{count?: number, domain?: string|null}} [opts]
    * @returns {object[]} the selected questions.

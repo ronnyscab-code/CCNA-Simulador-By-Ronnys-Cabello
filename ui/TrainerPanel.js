@@ -28,6 +28,9 @@ export class TrainerPanel {
     this.view = 'home';
     this.session = null; // per-mode transient state
     this.importResult = null; // { added, errors } after an import attempt
+    // Exam setup: chosen domain (null = all) and length.
+    this.examConfig = { domain: null, count: 10 };
+    this.examReviewWrongOnly = false;
 
     document
       .querySelector('[data-action="open-trainer"]')
@@ -35,9 +38,7 @@ export class TrainerPanel {
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) this.close();
     });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !this.overlay.hidden) this.close();
-    });
+    document.addEventListener('keydown', (e) => this._handleKey(e));
   }
 
   /**
@@ -80,6 +81,7 @@ export class TrainerPanel {
     const views = {
       home: () => this._renderHome(body),
       study: () => this._renderStudy(body),
+      'exam-setup': () => this._renderExamSetup(body),
       exam: () => this._renderExam(body),
       'exam-results': () => this._renderExamResults(body),
       flashcards: () => this._renderFlashcards(body),
@@ -112,16 +114,23 @@ export class TrainerPanel {
 
     const grid = el('div', 'trainer-modes');
     const modes = [
-      ['study', '📚', 'Study', 'Spaced-repetition review of due questions.'],
-      ['exam', '📝', 'Exam', 'A 10-question scored practice test.'],
-      ['flashcards', '🃏', 'Flashcards', 'Flip to reveal — quick self-testing.'],
-      ['stats', '📊', 'Stats', 'Accuracy, streaks, and achievements.'],
+      ['study', '📚', 'Estudio', 'Repaso espaciado de las preguntas pendientes.'],
+      ['exam-setup', '📝', 'Examen', 'Test puntuado: elige tema y número de preguntas.'],
+      ['flashcards', '🃏', 'Flashcards', 'Voltea para revelar — autoevaluación rápida.'],
+      ['stats', '📊', 'Progreso', 'Precisión, rachas y logros.'],
     ];
     for (const [view, icon, name, desc] of modes) {
       const card = el('button', 'trainer-mode-card');
       card.type = 'button';
       card.innerHTML = `<span class="trainer-mode-icon">${icon}</span><span class="trainer-mode-name">${name}</span><span class="trainer-mode-desc">${desc}</span>`;
-      card.addEventListener('click', () => this._enter(view));
+      card.addEventListener('click', () => {
+        if (view === 'exam-setup') {
+          this.view = 'exam-setup';
+          this.render();
+        } else {
+          this._enter(view);
+        }
+      });
       grid.appendChild(card);
     }
     body.appendChild(grid);
@@ -274,14 +283,83 @@ export class TrainerPanel {
       const queue = this.engine.buildStudyQueue({ limit: 20 });
       this.session = { queue, index: 0, selected: [], answered: false };
     } else if (view === 'exam') {
-      const questions = this.engine.buildExam({ count: 10 });
+      const questions = this.engine.buildExam({
+        count: this.examConfig.count,
+        domain: this.examConfig.domain,
+      });
       this.session = { questions, index: 0, answers: {}, selected: [] };
+      this.examReviewWrongOnly = false;
     } else if (view === 'flashcards') {
       const deck = this.engine.buildFlashcards();
       this.session = { deck, index: 0, revealed: false };
     }
     this.view = view;
     this.render();
+  }
+
+  // --- Exam setup (choose domain + length) ------------------------------
+
+  _renderExamSetup(body) {
+    this._backButton(body);
+
+    const intro = el('p', 'labs-intro');
+    intro.textContent = 'Configura tu examen: elige el tema y cuántas preguntas quieres.';
+    body.appendChild(intro);
+
+    // Domain filter.
+    const domainTitle = el('div', 'prop-group-title');
+    domainTitle.textContent = 'Tema';
+    body.appendChild(domainTitle);
+
+    const domains = this.engine.availableDomains();
+    const totalCount = domains.reduce((sum, d) => sum + d.count, 0);
+    const chips = el('div', 'practice-filters');
+    const options = [{ domain: null, count: totalCount, label: 'Todos' }, ...domains];
+    for (const opt of options) {
+      const active = this.examConfig.domain === opt.domain;
+      const chip = el('button', `practice-chip${active ? ' active' : ''}`);
+      chip.type = 'button';
+      chip.textContent = `${opt.label ?? opt.domain} (${opt.count})`;
+      chip.addEventListener('click', () => {
+        this.examConfig.domain = opt.domain;
+        this.render();
+      });
+      chips.appendChild(chip);
+    }
+    body.appendChild(chips);
+
+    // Length.
+    const poolSize = this.examConfig.domain
+      ? (domains.find((d) => d.domain === this.examConfig.domain)?.count ?? 0)
+      : totalCount;
+    const lenTitle = el('div', 'prop-group-title');
+    lenTitle.textContent = 'Número de preguntas';
+    body.appendChild(lenTitle);
+
+    const lenChips = el('div', 'practice-filters');
+    const lengths = [10, 20, 40, poolSize].filter((n, i, a) => n > 0 && a.indexOf(n) === i);
+    for (const n of lengths) {
+      const capped = Math.min(n, poolSize);
+      const active = this.examConfig.count === capped;
+      const chip = el('button', `practice-chip${active ? ' active' : ''}`);
+      chip.type = 'button';
+      chip.textContent = n >= poolSize ? `Todas (${poolSize})` : String(n);
+      chip.addEventListener('click', () => {
+        this.examConfig.count = capped;
+        this.render();
+      });
+      lenChips.appendChild(chip);
+    }
+    body.appendChild(lenChips);
+
+    const start = el('button', 'btn labs-check');
+    start.textContent = `Comenzar examen (${Math.min(this.examConfig.count, poolSize)} preguntas)`;
+    start.style.marginTop = 'var(--space-3)';
+    start.addEventListener('click', () => {
+      this.examConfig.count = Math.min(this.examConfig.count, poolSize) || 10;
+      this._enter('exam');
+    });
+    body.appendChild(start);
   }
 
   // --- Study ------------------------------------------------------------
@@ -299,7 +377,8 @@ export class TrainerPanel {
     }
 
     const q = s.queue[s.index];
-    body.appendChild(progress(s.index + 1, s.queue.length, 'Study'));
+    body.appendChild(progress(s.index + 1, s.queue.length, 'Estudio'));
+    body.appendChild(keyHint());
     this._renderQuestion(body, q, s, () => {
       const correct = this._isSelectionCorrect(q, s.selected);
       const { newAchievements } = this.engine.gradeStudyCard(q.id, correct);
@@ -313,7 +392,8 @@ export class TrainerPanel {
     this._backButton(body, '← Quit exam');
     const s = this.session;
     const q = s.questions[s.index];
-    body.appendChild(progress(s.index + 1, s.questions.length, 'Exam'));
+    body.appendChild(progress(s.index + 1, s.questions.length, 'Examen'));
+    body.appendChild(keyHint());
 
     const card = el('div', 'trainer-question');
     card.appendChild(domainTag(q));
@@ -358,21 +438,77 @@ export class TrainerPanel {
   _renderExamResults(body) {
     this._backButton(body);
     const r = this.session.result;
+    const s = this.session;
     const score = el('div', `labs-score${r.passed ? ' pass' : ''}`);
-    score.textContent = `${r.passed ? 'Passed' : 'Keep studying'} — ${r.correct}/${r.total} (${r.percent}%)`;
+    score.textContent = `${r.passed ? '¡Aprobado!' : 'Sigue estudiando'} — ${r.correct}/${r.total} (${r.percent}%)`;
     body.appendChild(score);
 
-    for (const [i, res] of r.perQuestion.entries()) {
+    // Review controls.
+    const wrongCount = r.perQuestion.filter((res) => !res.correct).length;
+    const controls = el('div', 'labs-actions');
+    const toggle = el('button', 'btn');
+    toggle.textContent = this.examReviewWrongOnly
+      ? 'Ver todas las preguntas'
+      : `Ver solo las falladas (${wrongCount})`;
+    toggle.addEventListener('click', () => {
+      this.examReviewWrongOnly = !this.examReviewWrongOnly;
+      this.render();
+    });
+    if (wrongCount > 0) controls.appendChild(toggle);
+    body.appendChild(controls);
+
+    // Per-question review with your answer, the correct one, and why.
+    const reviewTitle = el('div', 'prop-group-title');
+    reviewTitle.textContent = 'Repaso';
+    body.appendChild(reviewTitle);
+
+    r.perQuestion.forEach((res, i) => {
+      if (this.examReviewWrongOnly && res.correct) return;
       const q = this.engine.getQuestion(res.id);
-      const row = el('div', `labs-check-row ${res.correct ? 'ok' : 'fail'}`);
-      row.innerHTML = `<span class="labs-check-icon">${res.correct ? '✔' : '✘'}</span><span class="labs-check-text">Q${i + 1}. ${escapeHtml(q.prompt)}</span>`;
-      body.appendChild(row);
-    }
-    const retake = el('button', 'btn labs-check');
-    retake.textContent = 'New exam';
-    retake.style.marginTop = 'var(--space-3)';
-    retake.addEventListener('click', () => this._enter('exam'));
-    body.appendChild(retake);
+      const item = el('div', `trainer-review ${res.correct ? 'ok' : 'fail'}`);
+
+      const head = el('div', 'trainer-review-head');
+      head.innerHTML = `<span class="labs-check-icon">${res.correct ? '✔' : '✘'}</span><span>Q${i + 1}. ${escapeHtml(q.prompt)}</span>`;
+      item.appendChild(head);
+
+      const yourIds = s.answers[res.id] ?? [];
+      const yourText = yourIds.length
+        ? yourIds
+            .map((id) => q.choices.find((c) => c.id === id)?.text)
+            .filter(Boolean)
+            .join('; ')
+        : '(sin responder)';
+      const correctText = q.correct
+        .map((id) => q.choices.find((c) => c.id === id)?.text)
+        .filter(Boolean)
+        .join('; ');
+
+      if (!res.correct) {
+        const yours = el('div', 'trainer-review-line wrong');
+        yours.innerHTML = `<strong>Tu respuesta:</strong> ${escapeHtml(yourText)}`;
+        item.appendChild(yours);
+      }
+      const right = el('div', 'trainer-review-line right');
+      right.innerHTML = `<strong>Correcta:</strong> ${escapeHtml(correctText)}`;
+      item.appendChild(right);
+
+      const expl = el('div', 'trainer-review-expl');
+      expl.innerHTML = `${escapeHtml(q.explanation)}<br><span class="trainer-ref">${escapeHtml(q.reference)}</span>`;
+      item.appendChild(expl);
+
+      body.appendChild(item);
+    });
+
+    const actions = el('div', 'labs-actions');
+    actions.style.marginTop = 'var(--space-3)';
+    const again = el('button', 'btn labs-check');
+    again.textContent = 'Otro examen';
+    again.addEventListener('click', () => {
+      this.view = 'exam-setup';
+      this.render();
+    });
+    actions.appendChild(again);
+    body.appendChild(actions);
   }
 
   // --- Flashcards -------------------------------------------------------
@@ -530,7 +666,7 @@ export class TrainerPanel {
       const row = el('button', cls);
       row.type = 'button';
       row.disabled = locked;
-      row.innerHTML = `<span class="trainer-choice-key">${q.multi ? (isSel ? '☑' : '☐') : isSel ? '●' : '○'}</span><span>${escapeHtml(choice.text)}</span>`;
+      row.innerHTML = `<span class="trainer-choice-key">${choice.id.toUpperCase()}</span><span>${escapeHtml(choice.text)}</span>`;
       row.addEventListener('click', () => {
         let next;
         if (q.multi) {
@@ -555,6 +691,92 @@ export class TrainerPanel {
     const a = [...selected].sort();
     const b = [...q.correct].sort();
     return a.every((v, i) => v === b[i]);
+  }
+
+  // --- Keyboard shortcuts ----------------------------------------------
+
+  /**
+   * Global key handling for the Trainer: Escape closes; in Study/Exam,
+   * A–D or 1–4 pick a choice and Enter advances; in Flashcards, Enter flips
+   * and → shows the next card. Ignored while typing in a field.
+   * @param {KeyboardEvent} e
+   */
+  _handleKey(e) {
+    if (this.overlay.hidden) return;
+    if (e.key === 'Escape') {
+      this.close();
+      return;
+    }
+    const tag = e.target?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    const s = this.session;
+    if (!s) return;
+
+    if (this.view === 'exam') {
+      const q = s.questions[s.index];
+      if (!q) return;
+      const idx = keyToChoiceIndex(e.key, q.choices.length);
+      if (idx !== null) {
+        e.preventDefault();
+        s.answers[q.id] = toggleChoice(q, s.answers[q.id] ?? [], q.choices[idx].id);
+        this.render();
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (s.index === s.questions.length - 1) {
+          s.result = this.engine.gradeExam(s.questions, s.answers);
+          this._toast(s.result.newAchievements);
+          this.view = 'exam-results';
+        } else {
+          s.index += 1;
+        }
+        this.render();
+      }
+      return;
+    }
+
+    if (this.view === 'study') {
+      if (s.index >= s.queue.length) return;
+      const q = s.queue[s.index];
+      if (!q) return;
+      if (!s.answered) {
+        const idx = keyToChoiceIndex(e.key, q.choices.length);
+        if (idx !== null) {
+          e.preventDefault();
+          s.selected = toggleChoice(q, s.selected, q.choices[idx].id);
+          this.render();
+          return;
+        }
+        if (e.key === 'Enter' && s.selected.length) {
+          e.preventDefault();
+          s.answered = true;
+          const correct = this._isSelectionCorrect(q, s.selected);
+          this._toast(this.engine.gradeStudyCard(q.id, correct).newAchievements);
+          this.render();
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        s.index += 1;
+        s.selected = [];
+        s.answered = false;
+        this.render();
+      }
+      return;
+    }
+
+    if (this.view === 'flashcards') {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        s.revealed = !s.revealed;
+        this.render();
+      } else if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        s.index = (s.index + 1) % s.deck.length;
+        s.revealed = false;
+        this.render();
+      }
+    }
   }
 
   /**
@@ -585,9 +807,46 @@ function msg(text) {
   return p;
 }
 
+/**
+ * Maps a keyboard key to a 0-based choice index: '1'..'9' or 'a'..'i'.
+ * @param {string} key
+ * @param {number} count - number of choices available.
+ * @returns {number|null}
+ */
+function keyToChoiceIndex(key, count) {
+  if (/^[1-9]$/.test(key)) {
+    const i = Number(key) - 1;
+    return i < count ? i : null;
+  }
+  const lower = key.toLowerCase();
+  if (/^[a-i]$/.test(lower)) {
+    const i = lower.charCodeAt(0) - 97;
+    return i < count ? i : null;
+  }
+  return null;
+}
+
+/**
+ * Returns the next selection after toggling a choice (single- vs multi-answer).
+ * @param {{multi: boolean}} q
+ * @param {string[]} selected
+ * @param {string} id
+ * @returns {string[]}
+ */
+function toggleChoice(q, selected, id) {
+  if (!q.multi) return [id];
+  return selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
+}
+
 function progress(current, total, label) {
   const p = el('div', 'trainer-progress');
   p.textContent = `${label} — ${current} / ${total}`;
+  return p;
+}
+
+function keyHint() {
+  const p = el('p', 'trainer-keyhint');
+  p.textContent = 'Atajos: A–D o 1–4 para elegir · Enter para continuar';
   return p;
 }
 

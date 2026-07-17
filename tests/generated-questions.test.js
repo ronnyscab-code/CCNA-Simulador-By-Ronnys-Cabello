@@ -68,6 +68,24 @@ describe('generated question pool', () => {
   });
 });
 
+describe('exam configuration (domain + length)', () => {
+  test('availableDomains lists every domain with a count summing to the pool', () => {
+    const engine = new TrainerEngine({ store: new TrainerStore(memoryStorage()) });
+    const domains = engine.availableDomains();
+    assert.ok(domains.length >= 1);
+    const sum = domains.reduce((acc, d) => acc + d.count, 0);
+    assert.equal(sum, DEFAULT_QUESTIONS.length);
+  });
+
+  test('a domain-filtered exam only draws from that domain, capped to length', () => {
+    const engine = new TrainerEngine({ store: new TrainerStore(memoryStorage()) });
+    const { domain } = engine.availableDomains()[0];
+    const exam = engine.buildExam({ count: 5, domain });
+    assert.ok(exam.length > 0 && exam.length <= 5);
+    assert.ok(exam.every((q) => q.domain === domain));
+  });
+});
+
 describe('the trainer engine uses the large pool by default', () => {
   test('an exam can be built from the default pool', () => {
     const engine = new TrainerEngine({ store: new TrainerStore(memoryStorage()) });
