@@ -87,4 +87,25 @@ describe('CLI show command breadth', () => {
     const s = switchSession();
     assert.match(s.execute('show privilege'), /level is 15/);
   });
+
+  test('`show running-config interface <name>` shows just that interface', () => {
+    const s = switchSession();
+    // Configure an access port so the block has recognizable content.
+    s.execute('configure terminal');
+    s.execute('interface FastEthernet0/1');
+    s.execute('switchport access vlan 20');
+    s.execute('end');
+
+    const full = s.execute('show running-config interface FastEthernet0/1');
+    assert.doesNotMatch(full, /Invalid input|Incomplete command/);
+    assert.match(full, /interface FastEthernet0\/1/);
+    assert.match(full, /switchport access vlan 20/);
+    // It must NOT include other interfaces.
+    assert.doesNotMatch(full, /interface FastEthernet0\/2/);
+
+    // Abbreviations resolve to the canonical interface.
+    assert.match(s.execute('sh run int fa0/1'), /interface FastEthernet0\/1/);
+    // Unknown interface is reported, not crashed.
+    assert.match(s.execute('show running-config interface Gi9/9'), /Invalid interface/);
+  });
 });

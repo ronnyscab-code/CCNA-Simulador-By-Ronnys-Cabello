@@ -33,37 +33,7 @@ export function renderRunningConfig(device) {
 
   // Interfaces.
   for (const iface of device.interfaces) {
-    lines.push(`interface ${iface.name}`);
-    if (iface.description) lines.push(` description ${iface.description}`);
-
-    if (iface.switchportMode === 'access' && device.capabilities.switching) {
-      lines.push(' switchport mode access');
-      if (iface.accessVlan && iface.accessVlan !== 1) {
-        lines.push(` switchport access vlan ${iface.accessVlan}`);
-      }
-    } else if (iface.switchportMode === 'trunk') {
-      lines.push(' switchport mode trunk');
-      if (Array.isArray(iface.trunkAllowedVlans) && iface.trunkAllowedVlans.length > 0) {
-        lines.push(` switchport trunk allowed vlan ${iface.trunkAllowedVlans.join(',')}`);
-      }
-    }
-
-    if (iface.dhcp) {
-      lines.push(' ip address dhcp');
-    } else if (iface.ipAddress && iface.subnetMask) {
-      lines.push(` ip address ${iface.ipAddress} ${iface.subnetMask}`);
-    } else if (!device.capabilities.switching) {
-      lines.push(' no ip address');
-    }
-
-    if (iface.natRole === 'inside') lines.push(' ip nat inside');
-    if (iface.natRole === 'outside') lines.push(' ip nat outside');
-
-    if (iface.aclIn) lines.push(` ip access-group ${iface.aclIn} in`);
-    if (iface.aclOut) lines.push(` ip access-group ${iface.aclOut} out`);
-
-    lines.push(iface.enabled ? ' no shutdown' : ' shutdown');
-    lines.push('!');
+    lines.push(...interfaceConfigLines(device, iface));
   }
 
   // OSPF process.
@@ -123,6 +93,65 @@ export function renderRunningConfig(device) {
 
   lines.push('end');
   return lines.join('\n');
+}
+
+/**
+ * Renders one interface's configuration block (the same lines used by
+ * `show running-config`), including the trailing `!` separator.
+ * @param {import('../devices/Device.js').Device} device
+ * @param {import('../devices/NetworkInterface.js').NetworkInterface} iface
+ * @returns {string[]}
+ */
+function interfaceConfigLines(device, iface) {
+  const lines = [`interface ${iface.name}`];
+  if (iface.description) lines.push(` description ${iface.description}`);
+
+  if (iface.switchportMode === 'access' && device.capabilities.switching) {
+    lines.push(' switchport mode access');
+    if (iface.accessVlan && iface.accessVlan !== 1) {
+      lines.push(` switchport access vlan ${iface.accessVlan}`);
+    }
+  } else if (iface.switchportMode === 'trunk') {
+    lines.push(' switchport mode trunk');
+    if (Array.isArray(iface.trunkAllowedVlans) && iface.trunkAllowedVlans.length > 0) {
+      lines.push(` switchport trunk allowed vlan ${iface.trunkAllowedVlans.join(',')}`);
+    }
+  }
+
+  if (iface.dhcp) {
+    lines.push(' ip address dhcp');
+  } else if (iface.ipAddress && iface.subnetMask) {
+    lines.push(` ip address ${iface.ipAddress} ${iface.subnetMask}`);
+  } else if (!device.capabilities.switching) {
+    lines.push(' no ip address');
+  }
+
+  if (iface.natRole === 'inside') lines.push(' ip nat inside');
+  if (iface.natRole === 'outside') lines.push(' ip nat outside');
+
+  if (iface.aclIn) lines.push(` ip access-group ${iface.aclIn} in`);
+  if (iface.aclOut) lines.push(` ip access-group ${iface.aclOut} out`);
+
+  lines.push(iface.enabled ? ' no shutdown' : ' shutdown');
+  lines.push('!');
+  return lines;
+}
+
+/**
+ * `show running-config interface <name>` — just the block for one interface,
+ * IOS-style. Accepts abbreviations (e.g. "gi0/0").
+ * @param {import('../devices/Device.js').Device} device
+ * @param {string} ifaceName
+ * @returns {string}
+ */
+export function renderRunningConfigInterface(device, ifaceName) {
+  const iface = device.resolveInterface(ifaceName);
+  if (!iface) return `% Invalid interface ${ifaceName}`;
+  const block = ['!', ...interfaceConfigLines(device, iface).slice(0, -1), 'end'];
+  const bytes = block.join('\n').length;
+  return ['Building configuration...', '', `Current configuration : ${bytes} bytes`, ...block].join(
+    '\n',
+  );
 }
 
 /**

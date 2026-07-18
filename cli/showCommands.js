@@ -13,6 +13,7 @@
 
 import {
   renderRunningConfig,
+  renderRunningConfigInterface,
   renderIpInterfaceBrief,
   renderInterfaces,
   renderVlanBrief,
@@ -26,6 +27,10 @@ import { renderAcl } from '../protocols/acl.js';
  */
 export function registerShowCommands(tree) {
   tree.add('show running-config', (session) => renderRunningConfig(session.device));
+
+  tree.add('show running-config interface <name>', (session, args) =>
+    renderRunningConfigInterface(session.device, args.name),
+  );
 
   tree.add('show startup-config', (session) =>
     session.device.startupConfig
@@ -149,6 +154,7 @@ export function registerShowCommands(tree) {
   d('vlan', 'VLAN status');
   d('vtp', 'VTP information');
   // second-level help under `show ip ?` and `show vlan ?`
+  tree.describe('show running-config interface', 'Show interface configuration');
   tree.describe('show ip route', 'IP routing table');
   tree.describe('show ip interface', 'IP interface status and configuration');
   tree.describe('show ip ospf', 'OSPF information');
