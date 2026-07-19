@@ -21,6 +21,7 @@ import {
 } from './RunningConfig.js';
 import { maskToPrefix, networkAddress } from '../devices/net-utils.js';
 import { renderAcl } from '../protocols/acl.js';
+import { registerExtraShowCommands } from './showCommandsExtra.js';
 
 /**
  * @param {import('./CommandTree.js').CommandTree} tree
@@ -118,6 +119,9 @@ export function registerShowCommands(tree) {
     () => 'TCB       Local Address           Foreign Address        (state)',
   );
 
+  // The broad "cheat-sheet" set (interfaces/vlan/spanning-tree/ip/etc.).
+  registerExtraShowCommands(tree);
+
   // --- Contextual `?` help descriptions --------------------------------
   const d = (kw, text) => tree.describe(`show ${kw}`, text);
   d('aaa', 'Show AAA values');
@@ -169,7 +173,7 @@ export function registerShowCommands(tree) {
  * @param {import('./CliSession.js').CliSession} session
  * @returns {string}
  */
-function renderMacAddressTable(session) {
+export function renderMacAddressTable(session) {
   const header = [
     '          Mac Address Table',
     '-------------------------------------------',
@@ -202,7 +206,7 @@ function renderMacAddressTable(session) {
  * @param {import('./CliSession.js').CliSession} session
  * @returns {string}
  */
-function renderCdpNeighbors(session) {
+export function renderCdpNeighbors(session) {
   const { topology, node } = session;
   const header = [
     'Capability Codes: R - Router, T - Trans Bridge, B - Source Route Bridge',
@@ -233,7 +237,7 @@ function renderCdpNeighbors(session) {
  * @param {import('./CliSession.js').CliSession} session
  * @returns {string}
  */
-function renderIpRoute(session) {
+export function renderIpRoute(session) {
   const { device, node } = session;
   const legend = ['Codes: C - connected, S - static, O - OSPF', ''];
 
@@ -280,7 +284,7 @@ function renderIpRoute(session) {
  * @param {import('../devices/Device.js').Device} device
  * @returns {string}
  */
-function renderAccessLists(device) {
+export function renderAccessLists(device) {
   const acls = device.config.acls ?? {};
   const ids = Object.keys(acls);
   if (ids.length === 0) return '';
@@ -336,7 +340,7 @@ function renderOspfNeighbor(session) {
  * @param {import('./CliSession.js').CliSession} session
  * @returns {string}
  */
-function renderSpanningTree(session) {
+export function renderSpanningTree(session) {
   const { device, node } = session;
   if (!device.capabilities.switching) {
     return '% Spanning tree is only relevant on switches.';
@@ -543,7 +547,7 @@ function capabilityCode(device) {
  * @param {number} width
  * @returns {string}
  */
-function pad(text, width) {
+export function pad(text, width) {
   const str = String(text);
   return str.length >= width ? `${str} ` : str.padEnd(width, ' ');
 }
