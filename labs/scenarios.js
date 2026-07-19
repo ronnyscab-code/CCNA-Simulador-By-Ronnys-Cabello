@@ -685,8 +685,106 @@ export function generateOspfTransitScenarios(count = 4) {
 }
 
 /**
+ * FAMILY 10 — "wrong default gateway": PC2 is addressed but its default
+ * gateway points at an address that doesn't exist, so it can't leave its LAN.
+ * @param {number} count
+ * @returns {object[]}
+ */
+export function generateWrongGatewayScenarios(count = 4) {
+  const scenarios = [];
+  for (let i = 0; i < count; i += 1) {
+    const lanA = `192.168.${110 + i}`;
+    const lanB = `192.168.${130 + i}`;
+    const pc1Ip = `${lanA}.10`;
+    const pc2Ip = `${lanB}.10`;
+    const goodGw = `${lanB}.1`;
+    const badGw = `${lanB}.254`;
+    scenarios.push({
+      id: `wrong-gateway-${110 + i}`,
+      title: `Puerta de enlace equivocada: PC2 apunta mal (${lanB}.0/24)`,
+      difficulty: 'Beginner',
+      objective: `Corrige la puerta de enlace de PC2 para que haga ping a PC1 (${pc1Ip}).`,
+      description: `PC2 (${lanB}.0/24) tiene puerta de enlace ${badGw}, pero ese router no existe. El router real de su LAN es R1 en ${goodGw}.`,
+      generated: true,
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 120, y: 200 })
+          .router('r1', 'R1', { x: 360, y: 200 })
+          .pc('pc2', 'PC2', { x: 600, y: 200 });
+        b.link('pc1', 'FastEthernet0', 'r1', 'GigabitEthernet0/0');
+        b.link('r1', 'GigabitEthernet0/1', 'pc2', 'FastEthernet0');
+        b.ip('pc1', 'FastEthernet0', pc1Ip, MASK24).gateway('pc1', `${lanA}.1`);
+        b.ip('r1', 'GigabitEthernet0/0', `${lanA}.1`, MASK24);
+        b.ip('r1', 'GigabitEthernet0/1', goodGw, MASK24);
+        b.ip('pc2', 'FastEthernet0', pc2Ip, MASK24).gateway('pc2', badGw); // fault
+        return b.build();
+      },
+      checks: [
+        defaultGatewayIs('PC2', goodGw, { points: 1 }),
+        pingSucceeds('PC2', pc1Ip, { points: 2 }),
+      ],
+      hints: [
+        `La puerta de enlace debe ser una IP que exista en ${lanB}.0/24: el router R1 (${goodGw}).`,
+        `En PC2 cambia la puerta de enlace de ${badGw} a ${goodGw}.`,
+      ],
+      explanation: `PC2 no podía resolver por ARP una puerta de enlace inexistente (${badGw}). Apuntándola al router real (${goodGw}) el tráfico sale de la LAN y el ping funciona.`,
+    });
+  }
+  return scenarios;
+}
+
+/**
+ * FAMILY 11 — "router IP in the wrong subnet": R1's LAN interface (the PCs'
+ * gateway) is addressed in a different subnet, so the hosts can't reach it.
+ * @param {number} count
+ * @returns {object[]}
+ */
+export function generateWrongRouterIpScenarios(count = 4) {
+  const scenarios = [];
+  for (let i = 0; i < count; i += 1) {
+    const lanA = `192.168.${140 + i}`;
+    const lanB = `192.168.${160 + i}`;
+    const pc1Ip = `${lanA}.10`;
+    const pc2Ip = `${lanB}.10`;
+    const goodIp = `${lanA}.1`;
+    const wrongIp = `10.9.${i}.1`;
+    scenarios.push({
+      id: `wrong-router-ip-${140 + i}`,
+      title: `IP de router en subred equivocada (${lanA}.0/24)`,
+      difficulty: 'Intermediate',
+      objective: `Corrige la IP de Gi0/0 en R1 para que PC1 (${pc1Ip}) alcance a PC2 (${pc2Ip}).`,
+      description: `PC1 usa como puerta de enlace ${goodIp}, pero Gi0/0 de R1 quedó configurada como ${wrongIp} — otra subred. PC1 no puede alcanzar su gateway.`,
+      generated: true,
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 120, y: 200 })
+          .router('r1', 'R1', { x: 360, y: 200 })
+          .pc('pc2', 'PC2', { x: 600, y: 200 });
+        b.link('pc1', 'FastEthernet0', 'r1', 'GigabitEthernet0/0');
+        b.link('r1', 'GigabitEthernet0/1', 'pc2', 'FastEthernet0');
+        b.ip('pc1', 'FastEthernet0', pc1Ip, MASK24).gateway('pc1', goodIp);
+        b.ip('r1', 'GigabitEthernet0/0', wrongIp, MASK24); // fault: wrong subnet
+        b.ip('r1', 'GigabitEthernet0/1', `${lanB}.1`, MASK24);
+        b.ip('pc2', 'FastEthernet0', pc2Ip, MASK24).gateway('pc2', `${lanB}.1`);
+        return b.build();
+      },
+      checks: [
+        interfaceHasIp('R1', 'GigabitEthernet0/0', goodIp, MASK24, { points: 1 }),
+        pingSucceeds('PC1', pc2Ip, { points: 2 }),
+      ],
+      hints: [
+        `Gi0/0 debe estar en la misma subred que PC1 (${lanA}.0/24) y ser su gateway ${goodIp}.`,
+        `En R1: interface Gi0/0, \`ip address ${goodIp} ${MASK24}\`.`,
+      ],
+      explanation: `Con Gi0/0 en ${wrongIp}, R1 no tenía interfaz en ${lanA}.0/24 y PC1 no podía alcanzar su puerta de enlace. Reasignando ${goodIp} se crea la ruta conectada y el ping funciona.`,
+    });
+  }
+  return scenarios;
+}
+
+/**
  * The full catalog: authored scenarios first, then the generated drill
- * families (nine different skills, not one repeated template).
+ * families (eleven different skills, not one repeated template).
  * @returns {object[]}
  */
 export function allScenarios() {
@@ -705,5 +803,7 @@ export function allScenarios() {
     ...generateWrongNextHopScenarios(),
     ...generateTrunkScenarios(),
     ...generateOspfTransitScenarios(),
+    ...generateWrongGatewayScenarios(),
+    ...generateWrongRouterIpScenarios(),
   ];
 }

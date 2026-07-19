@@ -15,6 +15,8 @@ import {
   generateWrongNextHopScenarios,
   generateTrunkScenarios,
   generateOspfTransitScenarios,
+  generateWrongGatewayScenarios,
+  generateWrongRouterIpScenarios,
 } from '../labs/scenarios.js';
 import { pingSucceeds, interfaceEnabled, resolveNode } from '../scenarios/checks.js';
 
@@ -125,8 +127,8 @@ describe('ScenarioEngine scoring', () => {
   test('the catalog now spans several distinct drill families, not one template', () => {
     const generated = allScenarios().filter((s) => s.generated);
     const families = new Set(generated.map((s) => s.id.replace(/-\d+$/, '')));
-    assert.ok(families.size >= 9, `expected >= 9 families, got ${[...families].join(', ')}`);
-    assert.ok(generated.length >= 45, `expected a large pool, got ${generated.length}`);
+    assert.ok(families.size >= 11, `expected >= 11 families, got ${[...families].join(', ')}`);
+    assert.ok(generated.length >= 55, `expected a large pool, got ${generated.length}`);
   });
 
   test('every checked scenario in the catalog starts unsolved', () => {
@@ -231,6 +233,27 @@ describe('each generated drill family is broken on load and solvable by its fix'
       wildcard: '0.0.0.3',
       area: 0,
     });
+    assert.equal(scenarioEngine.evaluate().passedAll, true);
+  });
+
+  test('wrong-gateway family: pointing PC2 at the real router restores the ping', () => {
+    const scenario = generateWrongGatewayScenarios(1)[0];
+    const { topology, scenarioEngine } = freshEngine();
+    scenarioEngine.load(scenario);
+    assert.equal(scenarioEngine.evaluate().passedAll, false);
+    topology.getNode('pc2').device.defaultGateway = '192.168.130.1';
+    assert.equal(scenarioEngine.evaluate().passedAll, true);
+  });
+
+  test('wrong-router-ip family: re-addressing R1 into PC1 subnet restores the ping', () => {
+    const scenario = generateWrongRouterIpScenarios(1)[0];
+    const { topology, scenarioEngine } = freshEngine();
+    scenarioEngine.load(scenario);
+    assert.equal(scenarioEngine.evaluate().passedAll, false);
+    topology
+      .getNode('r1')
+      .device.getInterface('GigabitEthernet0/0')
+      .setIp('192.168.140.1', '255.255.255.0');
     assert.equal(scenarioEngine.evaluate().passedAll, true);
   });
 });

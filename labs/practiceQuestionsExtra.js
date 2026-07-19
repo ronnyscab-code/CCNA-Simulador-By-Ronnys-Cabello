@@ -758,6 +758,203 @@ export function extraPracticeQuestions() {
       },
       checks: [],
     },
+
+    // --- More hands-on (CLI-verifiable) --------------------------------
+
+    {
+      id: 'pqx-wrong-gateway',
+      domain: DOMAINS.FUND,
+      difficulty: 'Beginner',
+      prompt:
+        'PC2 (10.5.5.10/24) tiene puerta de enlace 10.5.5.254, pero ese router no existe. El router real de su LAN es R1 en 10.5.5.1. ¿Qué comando lo corrige?',
+      choices: [
+        { id: 'a', text: 'ip default-gateway 10.5.5.1' },
+        { id: 'b', text: 'ip default-gateway 10.5.5.254' },
+        { id: 'c', text: 'ip route 0.0.0.0 0.0.0.0 10.5.5.1' },
+        { id: 'd', text: 'no shutdown' },
+      ],
+      correct: ['a'],
+      explanation:
+        'La puerta de enlace debe ser una IP que exista en la LAN (10.5.5.1, R1). Apuntando a una inexistente, PC2 no puede resolverla por ARP y no sale de su subred.',
+      labHint: 'En PC2: `conf t`, `ip default-gateway 10.5.5.1`.',
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 120, y: 200 })
+          .router('r1', 'R1', { x: 360, y: 200 })
+          .pc('pc2', 'PC2', { x: 600, y: 200 });
+        b.link('pc1', 'FastEthernet0', 'r1', 'GigabitEthernet0/0');
+        b.link('r1', 'GigabitEthernet0/1', 'pc2', 'FastEthernet0');
+        b.ip('pc1', 'FastEthernet0', '10.4.4.10', M24).gateway('pc1', '10.4.4.1');
+        b.ip('r1', 'GigabitEthernet0/0', '10.4.4.1', M24);
+        b.ip('r1', 'GigabitEthernet0/1', '10.5.5.1', M24);
+        b.ip('pc2', 'FastEthernet0', '10.5.5.10', M24).gateway('pc2', '10.5.5.254'); // fault
+        return b.build();
+      },
+      checks: [defaultGatewayIs('PC2', '10.5.5.1'), pingSucceeds('PC2', '10.4.4.10')],
+      solve(t) {
+        dev(t, 'pc2').defaultGateway = '10.5.5.1';
+      },
+    },
+
+    {
+      id: 'pqx-router-ip-wrong-subnet',
+      domain: DOMAINS.CONN,
+      difficulty: 'Intermediate',
+      prompt:
+        'PC1 usa como gateway 192.168.7.1, pero Gi0/0 de R1 quedó como 10.9.9.1 (otra subred). ¿Qué comando en R1 lo arregla?',
+      choices: [
+        { id: 'a', text: 'ip address 192.168.7.1 255.255.255.0' },
+        { id: 'b', text: 'ip address 10.9.9.1 255.255.255.0' },
+        { id: 'c', text: 'ip default-gateway 192.168.7.1' },
+        { id: 'd', text: 'no shutdown' },
+      ],
+      correct: ['a'],
+      explanation:
+        'La interfaz LAN del router debe estar en la misma subred que los hosts y ser su gateway (192.168.7.1). En otra subred, PC1 no puede alcanzar su puerta de enlace.',
+      labHint: 'En R1: `interface Gi0/0`, `ip address 192.168.7.1 255.255.255.0`.',
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 120, y: 200 })
+          .router('r1', 'R1', { x: 360, y: 200 })
+          .pc('pc2', 'PC2', { x: 600, y: 200 });
+        b.link('pc1', 'FastEthernet0', 'r1', 'GigabitEthernet0/0');
+        b.link('r1', 'GigabitEthernet0/1', 'pc2', 'FastEthernet0');
+        b.ip('pc1', 'FastEthernet0', '192.168.7.10', M24).gateway('pc1', '192.168.7.1');
+        b.ip('r1', 'GigabitEthernet0/0', '10.9.9.1', M24); // fault: wrong subnet
+        b.ip('r1', 'GigabitEthernet0/1', '192.168.8.1', M24);
+        b.ip('pc2', 'FastEthernet0', '192.168.8.10', M24).gateway('pc2', '192.168.8.1');
+        return b.build();
+      },
+      checks: [
+        interfaceHasIp('R1', 'GigabitEthernet0/0', '192.168.7.1', M24),
+        pingSucceeds('PC1', '192.168.8.10'),
+      ],
+      solve(t) {
+        dev(t, 'r1').getInterface('GigabitEthernet0/0').setIp('192.168.7.1', M24);
+      },
+    },
+
+    {
+      id: 'pqx-second-lan-shutdown',
+      domain: DOMAINS.CONN,
+      difficulty: 'Beginner',
+      prompt:
+        'R1 conecta dos LANs. PC1 alcanza R1 pero no a PC2. `show ip interface brief` muestra Gi0/1 administratively down. ¿Qué comando la levanta?',
+      choices: [
+        { id: 'a', text: 'no shutdown' },
+        { id: 'b', text: 'no ip address' },
+        { id: 'c', text: 'shutdown' },
+        { id: 'd', text: 'switchport mode access' },
+      ],
+      correct: ['a'],
+      explanation:
+        'La interfaz hacia PC2 estaba apagada. `no shutdown` la levanta y crea la ruta conectada a esa LAN.',
+      labHint: 'En R1: `interface Gi0/1`, `no shutdown`.',
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 120, y: 200 })
+          .router('r1', 'R1', { x: 360, y: 200 })
+          .pc('pc2', 'PC2', { x: 600, y: 200 });
+        b.link('pc1', 'FastEthernet0', 'r1', 'GigabitEthernet0/0');
+        b.link('r1', 'GigabitEthernet0/1', 'pc2', 'FastEthernet0');
+        b.ip('pc1', 'FastEthernet0', '192.168.3.10', M24).gateway('pc1', '192.168.3.1');
+        b.ip('pc2', 'FastEthernet0', '192.168.4.10', M24).gateway('pc2', '192.168.4.1');
+        b.ip('r1', 'GigabitEthernet0/0', '192.168.3.1', M24);
+        b.ip('r1', 'GigabitEthernet0/1', '192.168.4.1', M24, { enabled: false }); // fault
+        return b.build();
+      },
+      checks: [interfaceEnabled('R1', 'GigabitEthernet0/1'), pingSucceeds('PC1', '192.168.4.10')],
+      solve(t) {
+        dev(t, 'r1').getInterface('GigabitEthernet0/1').enabled = true;
+      },
+    },
+
+    // --- More conceptual (explorable) ---------------------------------
+
+    {
+      id: 'pqx-c-hosts-30',
+      domain: DOMAINS.FUND,
+      difficulty: 'Beginner',
+      prompt: '¿Cuántas direcciones de host utilizables ofrece una subred /30?',
+      choices: [
+        { id: 'a', text: '2' },
+        { id: 'b', text: '4' },
+        { id: 'c', text: '6' },
+        { id: 'd', text: '0' },
+      ],
+      correct: ['a'],
+      explanation:
+        'Un /30 deja 2 bits de host: 2^2 = 4 direcciones, menos red y broadcast = 2 hosts. Es el clásico para enlaces punto a punto entre routers.',
+      labHint: 'Máscara 255.255.255.252. Úsalo entre dos routers (Serial/Gigabit).',
+      createTopology() {
+        return twoPcSwitch();
+      },
+      checks: [],
+    },
+
+    {
+      id: 'pqx-c-broadcast',
+      domain: DOMAINS.FUND,
+      difficulty: 'Intermediate',
+      prompt: '¿Cuál es la dirección de broadcast de 192.168.1.0/26?',
+      choices: [
+        { id: 'a', text: '192.168.1.63' },
+        { id: 'b', text: '192.168.1.64' },
+        { id: 'c', text: '192.168.1.127' },
+        { id: 'd', text: '192.168.1.255' },
+      ],
+      correct: ['a'],
+      explanation:
+        'Un /26 tiene bloques de 64. La subred 192.168.1.0 abarca .0–.63; el broadcast es la última: 192.168.1.63.',
+      labHint: 'Tamaño de bloque de /26 = 256 − 192 = 64. Broadcast = red + 63.',
+      createTopology() {
+        return twoPcSwitch();
+      },
+      checks: [],
+    },
+
+    {
+      id: 'pqx-c-trunk-allowed',
+      domain: DOMAINS.ACCESS,
+      difficulty: 'Intermediate',
+      prompt:
+        'En un enlace troncal quieres permitir SOLO las VLANs 10, 20 y 30. ¿Qué comando lo hace?',
+      choices: [
+        { id: 'a', text: 'switchport trunk allowed vlan 10,20,30' },
+        { id: 'b', text: 'switchport access vlan 10,20,30' },
+        { id: 'c', text: 'switchport trunk native vlan 10,20,30' },
+        { id: 'd', text: 'vlan 10,20,30' },
+      ],
+      correct: ['a'],
+      explanation:
+        '`switchport trunk allowed vlan <lista>` restringe qué VLANs cruzan el troncal. Usa `add`/`remove` para modificar la lista sin reemplazarla.',
+      labHint: 'Aplica sobre un puerto ya en modo trunk (`switchport mode trunk`).',
+      createTopology() {
+        return twoSwitchTrunk();
+      },
+      checks: [],
+    },
+
+    {
+      id: 'pqx-c-show-mac',
+      domain: DOMAINS.ACCESS,
+      difficulty: 'Beginner',
+      prompt: '¿Qué comando muestra qué direcciones MAC ha aprendido un switch y en qué puertos?',
+      choices: [
+        { id: 'a', text: 'show mac address-table' },
+        { id: 'b', text: 'show ip arp' },
+        { id: 'c', text: 'show interfaces status' },
+        { id: 'd', text: 'show vlan brief' },
+      ],
+      correct: ['a'],
+      explanation:
+        '`show mac address-table` lista la tabla CAM: VLAN, MAC, tipo (dynamic/static) y puerto. Es clave para diagnosticar el reenvío de capa 2.',
+      labHint: 'Haz ping entre PCs y luego mira cómo se llena con `show mac address-table`.',
+      createTopology() {
+        return twoPcSwitch();
+      },
+      checks: [],
+    },
   ];
 }
 
