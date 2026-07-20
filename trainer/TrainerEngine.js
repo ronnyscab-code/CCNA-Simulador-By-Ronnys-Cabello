@@ -15,11 +15,28 @@
 
 import { QUESTIONS } from './questions.js';
 import { GENERATED_QUESTIONS } from './generatedQuestions.js';
+import { CCNP_QUESTIONS } from './ccnpQuestions.js';
 import { schedule, isDue, Grade } from './SpacedRepetition.js';
-
-/** The full built-in pool: curated conceptual questions + generated drills. */
-export const DEFAULT_QUESTIONS = Object.freeze([...QUESTIONS, ...GENERATED_QUESTIONS]);
 import { earnedAchievementIds } from './Achievements.js';
+
+/**
+ * The full built-in pool: CCNA (curated + generated) plus the CCNP bank. Each
+ * question's `track` ('CCNA' by default, 'CCNP' for the enterprise bank) lets
+ * the Trainer present the two certifications as separate study sections.
+ */
+export const DEFAULT_QUESTIONS = Object.freeze([
+  ...QUESTIONS,
+  ...GENERATED_QUESTIONS,
+  ...CCNP_QUESTIONS,
+]);
+
+/**
+ * @param {object} q
+ * @returns {string} the question's track, defaulting to 'CCNA'.
+ */
+export function trackOf(q) {
+  return q.track ?? 'CCNA';
+}
 
 /**
  * Compares a set of selected choice ids against the correct set (order
@@ -66,9 +83,9 @@ export class TrainerEngine {
    * @param {{limit?: number, domain?: string|null}} [opts]
    * @returns {object[]}
    */
-  buildStudyQueue({ limit = 20, domain = null } = {}) {
+  buildStudyQueue({ limit = 20, domain = null, track = null } = {}) {
     const now = this.now();
-    const pool = domain ? this.questions.filter((q) => q.domain === domain) : this.questions;
+    const pool = this._filter({ domain, track });
     const due = pool.filter((q) => isDue(this.store.getCardState(q.id), now));
     due.sort((a, b) => this.store.getCardState(a.id).due - this.store.getCardState(b.id).due);
     return due.slice(0, limit);
@@ -95,23 +112,47 @@ export class TrainerEngine {
   // --- Exam mode --------------------------------------------------------
 
   /**
-   * Lists the domains present in the pool with how many questions each holds,
+   * Filters the pool by any combination of track / domain / difficulty.
+   * `track` matches the question's `track` (default 'CCNA').
+   * @param {{track?: string|null, domain?: string|null, difficulty?: string|null}} [opts]
+   * @returns {object[]}
+   */
+  _filter({ track = null, domain = null, difficulty = null } = {}) {
+    return this.questions.filter(
+      (q) =>
+        (!track || trackOf(q) === track) &&
+        (!domain || q.domain === domain) &&
+        (!difficulty || q.difficulty === difficulty),
+    );
+  }
+
+  /**
+   * @returns {string[]} the distinct study tracks present (e.g. CCNA, CCNP).
+   */
+  availableTracks() {
+    return [...new Set(this.questions.map((q) => trackOf(q)))];
+  }
+
+  /**
+   * Lists the domains present (optionally within a track) with their counts,
    * so the UI can offer a "study this domain" filter.
+   * @param {string|null} [track]
    * @returns {Array<{domain: string, count: number}>}
    */
-  availableDomains() {
+  availableDomains(track = null) {
     const counts = new Map();
-    for (const q of this.questions) counts.set(q.domain, (counts.get(q.domain) ?? 0) + 1);
+    for (const q of this._filter({ track })) counts.set(q.domain, (counts.get(q.domain) ?? 0) + 1);
     return [...counts.entries()].map(([domain, count]) => ({ domain, count }));
   }
 
   /**
-   * Lists the difficulty levels present with their counts.
+   * Lists the difficulty levels present (optionally within a track).
+   * @param {string|null} [track]
    * @returns {Array<{difficulty: string, count: number}>}
    */
-  availableDifficulties() {
+  availableDifficulties(track = null) {
     const counts = new Map();
-    for (const q of this.questions) {
+    for (const q of this._filter({ track })) {
       counts.set(q.difficulty, (counts.get(q.difficulty) ?? 0) + 1);
     }
     return [...counts.entries()].map(([difficulty, count]) => ({ difficulty, count }));
@@ -119,25 +160,21 @@ export class TrainerEngine {
 
   /**
    * Assembles a randomized exam. Does not mutate any state.
-   * @param {{count?: number, domain?: string|null, difficulty?: string|null}} [opts]
+   * @param {{count?: number, domain?: string|null, difficulty?: string|null, track?: string|null}} [opts]
    * @returns {object[]} the selected questions.
    */
-  buildExam({ count = 10, domain = null, difficulty = null } = {}) {
-    let pool = domain ? this.questions.filter((q) => q.domain === domain) : [...this.questions];
-    if (difficulty) pool = pool.filter((q) => q.difficulty === difficulty);
-    const shuffled = this._shuffle(pool);
+  buildExam({ count = 10, domain = null, difficulty = null, track = null } = {}) {
+    const shuffled = this._shuffle(this._filter({ track, domain, difficulty }));
     return shuffled.slice(0, Math.min(count, shuffled.length));
   }
 
   /**
-   * Counts questions matching a domain + difficulty (for the setup UI).
-   * @param {{domain?: string|null, difficulty?: string|null}} [opts]
+   * Counts questions matching a track + domain + difficulty (for the setup UI).
+   * @param {{domain?: string|null, difficulty?: string|null, track?: string|null}} [opts]
    * @returns {number}
    */
-  countMatching({ domain = null, difficulty = null } = {}) {
-    return this.questions.filter(
-      (q) => (!domain || q.domain === domain) && (!difficulty || q.difficulty === difficulty),
-    ).length;
+  countMatching({ domain = null, difficulty = null, track = null } = {}) {
+    return this._filter({ track, domain, difficulty }).length;
   }
 
   // --- Review mode (your mistakes) -------------------------------------
@@ -148,17 +185,21 @@ export class TrainerEngine {
    * @param {{limit?: number}} [opts]
    * @returns {object[]}
    */
-  buildReview({ limit = 30 } = {}) {
+  buildReview({ limit = 30, track = null } = {}) {
     const missed = new Set(this.store.getMissedIds());
-    return this.questions.filter((q) => missed.has(q.id)).slice(0, limit);
+    return this._filter({ track })
+      .filter((q) => missed.has(q.id))
+      .slice(0, limit);
   }
 
   /**
-   * @returns {number} how many questions are currently in the review pool.
+   * @param {string|null} [track]
+   * @returns {number} how many questions are currently in the review pool
+   *   (optionally within a track).
    */
-  reviewCount() {
-    const ids = new Set(this.questions.map((q) => q.id));
-    return this.store.getMissedIds().filter((id) => ids.has(id)).length;
+  reviewCount(track = null) {
+    const missed = new Set(this.store.getMissedIds());
+    return this._filter({ track }).filter((q) => missed.has(q.id)).length;
   }
 
   /**
@@ -204,9 +245,8 @@ export class TrainerEngine {
    * @param {{domain?: string|null}} [opts]
    * @returns {object[]}
    */
-  buildFlashcards({ domain = null } = {}) {
-    const pool = domain ? this.questions.filter((q) => q.domain === domain) : [...this.questions];
-    return this._shuffle(pool);
+  buildFlashcards({ domain = null, track = null } = {}) {
+    return this._shuffle(this._filter({ domain, track }));
   }
 
   // --- Stats ------------------------------------------------------------

@@ -28,6 +28,8 @@ export class TrainerPanel {
     this.view = 'home';
     this.session = null; // per-mode transient state
     this.importResult = null; // { added, errors } after an import attempt
+    // Study track: 'CCNA' or 'CCNP' — filters every mode's question pool.
+    this.track = 'CCNA';
     // Exam setup: chosen domain/difficulty (null = all) and length.
     this.examConfig = { domain: null, difficulty: null, count: 10 };
     this.examReviewWrongOnly = false;
@@ -110,8 +112,33 @@ export class TrainerPanel {
   _renderHome(body) {
     const intro = el('p', 'labs-intro');
     intro.textContent =
-      'Original questions written to the CCNA 200-301 blueprint. Study with spaced repetition, take a practice exam, or flip flashcards.';
+      this.track === 'CCNP'
+        ? 'Preguntas originales del temario CCNP Enterprise (ENCOR/ENARSI). Estudia, examínate o repasa con flashcards.'
+        : 'Preguntas originales del temario CCNA 200-301. Estudia con repaso espaciado, haz un examen o usa flashcards.';
     body.appendChild(intro);
+
+    // Track selector (CCNA / CCNP) — only shown when both banks exist.
+    const tracks = this.engine.availableTracks();
+    if (tracks.length > 1) {
+      const trackTitle = el('div', 'prop-group-title');
+      trackTitle.textContent = 'Certificación';
+      body.appendChild(trackTitle);
+      const chips = el('div', 'practice-filters');
+      for (const t of tracks) {
+        const active = this.track === t;
+        const chip = el('button', `practice-chip${active ? ' active' : ''}`);
+        chip.type = 'button';
+        chip.textContent = `${t} (${this.engine.availableDomains(t).reduce((n, d) => n + d.count, 0)})`;
+        chip.addEventListener('click', () => {
+          this.track = t;
+          // Domain/difficulty differ per track, so reset the exam filters.
+          this.examConfig = { domain: null, difficulty: null, count: 10 };
+          this.render();
+        });
+        chips.appendChild(chip);
+      }
+      body.appendChild(chips);
+    }
 
     const grid = el('div', 'trainer-modes');
     const modes = [
@@ -136,7 +163,7 @@ export class TrainerPanel {
     }
     body.appendChild(grid);
 
-    const missed = this.engine.reviewCount();
+    const missed = this.engine.reviewCount(this.track);
     const reviewBtn = el('button', 'btn trainer-import-btn');
     reviewBtn.type = 'button';
     reviewBtn.textContent = missed ? `🔁 Repasar mis fallos (${missed})` : '🔁 Repasar mis fallos';
@@ -288,22 +315,24 @@ export class TrainerPanel {
   }
 
   _enter(view) {
+    const track = this.track;
     if (view === 'study') {
-      const queue = this.engine.buildStudyQueue({ limit: 20 });
+      const queue = this.engine.buildStudyQueue({ limit: 20, track });
       this.session = { queue, index: 0, selected: [], answered: false };
     } else if (view === 'exam') {
       const questions = this.engine.buildExam({
         count: this.examConfig.count,
         domain: this.examConfig.domain,
         difficulty: this.examConfig.difficulty,
+        track,
       });
       this.session = { questions, index: 0, answers: {}, selected: [] };
       this.examReviewWrongOnly = false;
     } else if (view === 'review') {
-      const queue = this.engine.buildReview({ limit: 30 });
+      const queue = this.engine.buildReview({ limit: 30, track });
       this.session = { queue, index: 0, selected: [], answered: false, review: true };
     } else if (view === 'flashcards') {
-      const deck = this.engine.buildFlashcards();
+      const deck = this.engine.buildFlashcards({ track });
       this.session = { deck, index: 0, revealed: false };
     }
     this.view = view;
@@ -316,7 +345,7 @@ export class TrainerPanel {
     this._backButton(body);
 
     const intro = el('p', 'labs-intro');
-    intro.textContent = 'Configura tu examen: elige el tema y cuántas preguntas quieres.';
+    intro.textContent = `Examen ${this.track}: elige el tema, la dificultad y cuántas preguntas quieres.`;
     body.appendChild(intro);
 
     // Domain filter.
@@ -324,7 +353,7 @@ export class TrainerPanel {
     domainTitle.textContent = 'Tema';
     body.appendChild(domainTitle);
 
-    const domains = this.engine.availableDomains();
+    const domains = this.engine.availableDomains(this.track);
     const totalCount = domains.reduce((sum, d) => sum + d.count, 0);
     const chips = el('div', 'practice-filters');
     const options = [{ domain: null, count: totalCount, label: 'Todos' }, ...domains];
@@ -346,7 +375,7 @@ export class TrainerPanel {
     diffTitle.textContent = 'Dificultad';
     body.appendChild(diffTitle);
     const diffChips = el('div', 'practice-filters');
-    const diffs = this.engine.availableDifficulties();
+    const diffs = this.engine.availableDifficulties(this.track);
     const diffOptions = [{ difficulty: null, label: 'Todas' }, ...diffs];
     for (const opt of diffOptions) {
       const active = this.examConfig.difficulty === opt.difficulty;
@@ -361,10 +390,11 @@ export class TrainerPanel {
     }
     body.appendChild(diffChips);
 
-    // Length (respects domain + difficulty).
+    // Length (respects track + domain + difficulty).
     const poolSize = this.engine.countMatching({
       domain: this.examConfig.domain,
       difficulty: this.examConfig.difficulty,
+      track: this.track,
     });
     const lenTitle = el('div', 'prop-group-title');
     lenTitle.textContent = 'Número de preguntas';

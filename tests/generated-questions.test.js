@@ -15,7 +15,8 @@ function memoryStorage() {
 describe('generated question pool', () => {
   test('the built-in pool exceeds 500 questions', () => {
     assert.ok(DEFAULT_QUESTIONS.length >= 500, `expected >= 500, got ${DEFAULT_QUESTIONS.length}`);
-    assert.equal(DEFAULT_QUESTIONS.length, QUESTIONS.length + GENERATED_QUESTIONS.length);
+    // The default pool is CCNA (curated + generated) plus the CCNP bank.
+    assert.ok(DEFAULT_QUESTIONS.length >= QUESTIONS.length + GENERATED_QUESTIONS.length);
   });
 
   test('every generated question is well-formed with a valid domain', () => {
