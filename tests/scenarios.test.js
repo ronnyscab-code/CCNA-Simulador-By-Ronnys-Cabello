@@ -19,6 +19,8 @@ import {
   generateWrongRouterIpScenarios,
   generateWrongMaskScenarios,
   generateAclBlockScenarios,
+  generateStaticRouteScenarios,
+  generateWrongRouteMaskScenarios,
 } from '../labs/scenarios.js';
 import { pingSucceeds, interfaceEnabled, resolveNode } from '../scenarios/checks.js';
 
@@ -129,8 +131,8 @@ describe('ScenarioEngine scoring', () => {
   test('the catalog now spans several distinct drill families, not one template', () => {
     const generated = allScenarios().filter((s) => s.generated);
     const families = new Set(generated.map((s) => s.id.replace(/-\d+$/, '')));
-    assert.ok(families.size >= 13, `expected >= 13 families, got ${[...families].join(', ')}`);
-    assert.ok(generated.length >= 60, `expected a large pool, got ${generated.length}`);
+    assert.ok(families.size >= 15, `expected >= 15 families, got ${[...families].join(', ')}`);
+    assert.ok(generated.length >= 70, `expected a large pool, got ${generated.length}`);
   });
 
   test('every checked scenario in the catalog starts unsolved', () => {
@@ -277,6 +279,29 @@ describe('each generated drill family is broken on load and solvable by its fix'
     scenarioEngine.load(scenario);
     assert.equal(scenarioEngine.evaluate().passedAll, false);
     topology.getNode('r1').device.getInterface('GigabitEthernet0/1').aclOut = null;
+    assert.equal(scenarioEngine.evaluate().passedAll, true);
+  });
+
+  test('static-route family: adding the route to the remote LAN restores the ping', () => {
+    const scenario = generateStaticRouteScenarios(1)[0];
+    const { topology, scenarioEngine } = freshEngine();
+    scenarioEngine.load(scenario);
+    assert.equal(scenarioEngine.evaluate().passedAll, false);
+    topology.getNode('r1').device.config.staticRoutes.push({
+      prefix: '172.21.0.0',
+      mask: '255.255.255.0',
+      nextHop: '10.21.0.2',
+    });
+    assert.equal(scenarioEngine.evaluate().passedAll, true);
+  });
+
+  test('wrong-route-mask family: widening the route mask restores the ping', () => {
+    const scenario = generateWrongRouteMaskScenarios(1)[0];
+    const { topology, scenarioEngine } = freshEngine();
+    scenarioEngine.load(scenario);
+    assert.equal(scenarioEngine.evaluate().passedAll, false);
+    topology.getNode('r1').device.config.staticRoutes.find((r) => r.prefix === '172.22.0.0').mask =
+      '255.255.255.0';
     assert.equal(scenarioEngine.evaluate().passedAll, true);
   });
 });

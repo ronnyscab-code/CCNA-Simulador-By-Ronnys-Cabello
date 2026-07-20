@@ -880,8 +880,123 @@ export function generateAclBlockScenarios(count = 4) {
 }
 
 /**
+ * FAMILY 14 — "the missing static route": R1 has no route at all to the LAN
+ * behind R2. Add `ip route <net> <mask> <next-hop>`.
+ * @param {number} count
+ * @returns {object[]}
+ */
+export function generateStaticRouteScenarios(count = 4) {
+  const scenarios = [];
+  for (let i = 0; i < count; i += 1) {
+    const lanA = `192.168.${200 + i}`;
+    const remote = `172.21.${i}`;
+    const t1 = `10.21.${i}.1`;
+    const t2 = `10.21.${i}.2`;
+    const pc1Ip = `${lanA}.10`;
+    const pc2Ip = `${remote}.10`;
+    scenarios.push({
+      id: `static-route-${200 + i}`,
+      title: `Ruta estática ausente: R1 no conoce ${remote}.0/24`,
+      difficulty: 'Intermediate',
+      objective: `Añade en R1 la ruta para que PC1 (${pc1Ip}) alcance a PC2 (${pc2Ip}).`,
+      description: `R1 y R2 están conectados, pero R1 no tiene ninguna ruta a ${remote}.0/24 (detrás de R2, siguiente salto ${t2}). R2 ya sabe volver.`,
+      generated: true,
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 80, y: 220 })
+          .router('r1', 'R1', { x: 280, y: 220 })
+          .router('r2', 'R2', { x: 520, y: 220 })
+          .pc('pc2', 'PC2', { x: 740, y: 220 });
+        b.link('pc1', 'FastEthernet0', 'r1', 'GigabitEthernet0/0');
+        b.link('r1', 'GigabitEthernet0/1', 'r2', 'GigabitEthernet0/0');
+        b.link('r2', 'GigabitEthernet0/1', 'pc2', 'FastEthernet0');
+        b.ip('pc1', 'FastEthernet0', pc1Ip, MASK24).gateway('pc1', `${lanA}.1`);
+        b.ip('pc2', 'FastEthernet0', pc2Ip, MASK24).gateway('pc2', `${remote}.1`);
+        b.ip('r1', 'GigabitEthernet0/0', `${lanA}.1`, MASK24);
+        b.ip('r1', 'GigabitEthernet0/1', t1, MASK30);
+        b.ip('r2', 'GigabitEthernet0/0', t2, MASK30);
+        b.ip('r2', 'GigabitEthernet0/1', `${remote}.1`, MASK24);
+        b.topology.getNode('r2').device.config.staticRoutes.push({
+          prefix: `${lanA}.0`,
+          mask: MASK24,
+          nextHop: t1,
+        });
+        return b.build();
+      },
+      checks: [pingSucceeds('PC1', pc2Ip, { points: 2 })],
+      hints: [
+        'Sintaxis: `ip route <red> <máscara> <siguiente-salto>`.',
+        `En R1: \`ip route ${remote}.0 ${MASK24} ${t2}\`.`,
+      ],
+      explanation: `R1 no tenía forma de saber por dónde enviar el tráfico a ${remote}.0/24. La ruta estática hacia ${t2} (R2) crea esa entrada y el ping funciona.`,
+    });
+  }
+  return scenarios;
+}
+
+/**
+ * FAMILY 15 — "the static route with the wrong mask": R1's route to the remote
+ * LAN uses a /25 that doesn't cover the destination host. Widen it to /24.
+ * @param {number} count
+ * @returns {object[]}
+ */
+export function generateWrongRouteMaskScenarios(count = 4) {
+  const scenarios = [];
+  for (let i = 0; i < count; i += 1) {
+    const lanA = `192.168.${210 + i}`;
+    const remote = `172.22.${i}`;
+    const t1 = `10.22.${i}.1`;
+    const t2 = `10.22.${i}.2`;
+    const pc1Ip = `${lanA}.10`;
+    const pc2Ip = `${remote}.200`; // .200 is NOT inside remote.0/25
+    scenarios.push({
+      id: `wrong-route-mask-${210 + i}`,
+      title: `Máscara de ruta incorrecta: PC2 fuera de rango (${remote}.0/24)`,
+      difficulty: 'Advanced',
+      objective: `Corrige la máscara de la ruta en R1 para que PC1 (${pc1Ip}) alcance a PC2 (${pc2Ip}).`,
+      description: `R1 tiene una ruta a ${remote}.0 pero con máscara /25 (255.255.255.128), que solo cubre ${remote}.0–.127. PC2 (${pc2Ip}) queda fuera.`,
+      generated: true,
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 80, y: 220 })
+          .router('r1', 'R1', { x: 280, y: 220 })
+          .router('r2', 'R2', { x: 520, y: 220 })
+          .pc('pc2', 'PC2', { x: 740, y: 220 });
+        b.link('pc1', 'FastEthernet0', 'r1', 'GigabitEthernet0/0');
+        b.link('r1', 'GigabitEthernet0/1', 'r2', 'GigabitEthernet0/0');
+        b.link('r2', 'GigabitEthernet0/1', 'pc2', 'FastEthernet0');
+        b.ip('pc1', 'FastEthernet0', pc1Ip, MASK24).gateway('pc1', `${lanA}.1`);
+        b.ip('pc2', 'FastEthernet0', pc2Ip, MASK24).gateway('pc2', `${remote}.1`);
+        b.ip('r1', 'GigabitEthernet0/0', `${lanA}.1`, MASK24);
+        b.ip('r1', 'GigabitEthernet0/1', t1, MASK30);
+        b.ip('r2', 'GigabitEthernet0/0', t2, MASK30);
+        b.ip('r2', 'GigabitEthernet0/1', `${remote}.1`, MASK24);
+        b.topology.getNode('r1').device.config.staticRoutes.push({
+          prefix: `${remote}.0`,
+          mask: '255.255.255.128', // fault: too narrow
+          nextHop: t2,
+        });
+        b.topology.getNode('r2').device.config.staticRoutes.push({
+          prefix: `${lanA}.0`,
+          mask: MASK24,
+          nextHop: t1,
+        });
+        return b.build();
+      },
+      checks: [pingSucceeds('PC1', pc2Ip, { points: 2 })],
+      hints: [
+        `La ruta cubre ${remote}.0/25 (.0–.127) pero PC2 es ${pc2Ip}. Necesita un /24.`,
+        `En R1: \`no ip route ${remote}.0 255.255.255.128 ${t2}\`, luego \`ip route ${remote}.0 ${MASK24} ${t2}\`.`,
+      ],
+      explanation: `La máscara /25 dejaba ${pc2Ip} fuera del rango de la ruta, así que R1 no tenía forma de alcanzarlo. Ampliándola a ${MASK24} la ruta cubre toda la LAN.`,
+    });
+  }
+  return scenarios;
+}
+
+/**
  * The full catalog: authored scenarios first, then the generated drill
- * families (thirteen different skills, not one repeated template).
+ * families (fifteen different skills, not one repeated template).
  * @returns {object[]}
  */
 export function allScenarios() {
@@ -904,5 +1019,7 @@ export function allScenarios() {
     ...generateWrongRouterIpScenarios(),
     ...generateWrongMaskScenarios(),
     ...generateAclBlockScenarios(),
+    ...generateStaticRouteScenarios(),
+    ...generateWrongRouteMaskScenarios(),
   ];
 }
