@@ -38,6 +38,10 @@ export class NetworkInterface {
     switchportMode = 'routed',
     accessVlan = 1,
     trunkAllowedVlans = null,
+    aclIn = null,
+    aclOut = null,
+    natRole = null,
+    dhcp = false,
     rng = Math.random,
   }) {
     if (!name) throw new Error('NetworkInterface requires a name');
@@ -51,6 +55,12 @@ export class NetworkInterface {
     this.switchportMode = switchportMode;
     this.accessVlan = accessVlan;
     this.trunkAllowedVlans = trunkAllowedVlans;
+    // Applied inbound/outbound ACL ids, NAT role ('inside'/'outside'), and
+    // whether the interface obtains its address via DHCP. Set by the CLI.
+    this.aclIn = aclIn;
+    this.aclOut = aclOut;
+    this.natRole = natRole;
+    this.dhcp = dhcp;
   }
 
   /**
@@ -93,6 +103,12 @@ export class NetworkInterface {
       switchportMode: this.switchportMode,
       accessVlan: this.accessVlan,
       trunkAllowedVlans: this.trunkAllowedVlans,
+      // Applied ACLs and NAT role must survive save/load so a configured
+      // topology behaves identically after being reloaded.
+      aclIn: this.aclIn,
+      aclOut: this.aclOut,
+      natRole: this.natRole,
+      dhcp: this.dhcp,
     };
   }
 

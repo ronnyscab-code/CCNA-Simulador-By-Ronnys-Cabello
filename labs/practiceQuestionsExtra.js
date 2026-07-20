@@ -955,6 +955,151 @@ export function extraPracticeQuestions() {
       },
       checks: [],
     },
+
+    // --- Batch 3: more hands-on + concepts -----------------------------
+
+    {
+      id: 'pqx-wrong-mask-pc',
+      domain: DOMAINS.FUND,
+      difficulty: 'Intermediate',
+      prompt:
+        'PC2 (192.168.6.130) no alcanza a PC1 (192.168.6.10) en el mismo switch. PC2 tiene máscara 255.255.255.128 (/25). ¿Qué comando lo arregla?',
+      choices: [
+        { id: 'a', text: 'ip address 192.168.6.130 255.255.255.0' },
+        { id: 'b', text: 'ip address 192.168.6.130 255.255.255.128' },
+        { id: 'c', text: 'ip default-gateway 192.168.6.1' },
+        { id: 'd', text: 'no shutdown' },
+      ],
+      correct: ['a'],
+      explanation:
+        'Con /25, PC2 (network .128) cree que PC1 (.10, network .0) está en otra subred y busca un gateway inexistente. Con /24 ambos vuelven a 192.168.6.0/24.',
+      labHint: 'En PC2: `interface Fa0`, `ip address 192.168.6.130 255.255.255.0`.',
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 120, y: 160 })
+          .switch('sw1', 'SW1', { x: 360, y: 260 })
+          .pc('pc2', 'PC2', { x: 600, y: 160 });
+        b.link('pc1', 'FastEthernet0', 'sw1', 'FastEthernet0/1');
+        b.link('pc2', 'FastEthernet0', 'sw1', 'FastEthernet0/2');
+        b.ip('pc1', 'FastEthernet0', '192.168.6.10', M24);
+        b.ip('pc2', 'FastEthernet0', '192.168.6.130', '255.255.255.128'); // fault
+        return b.build();
+      },
+      checks: [
+        interfaceHasIp('PC2', 'FastEthernet0', '192.168.6.130', M24),
+        pingSucceeds('PC2', '192.168.6.10'),
+      ],
+      solve(t) {
+        dev(t, 'pc2').getInterface('FastEthernet0').setIp('192.168.6.130', M24);
+      },
+    },
+
+    {
+      id: 'pqx-acl-blocks-all',
+      domain: DOMAINS.SEC,
+      difficulty: 'Advanced',
+      prompt:
+        'El direccionamiento es correcto pero PC1 no llega a PC2: una ACL saliente en Gi0/1 de R1 deniega todo. ¿Qué comando restaura la conectividad?',
+      choices: [
+        { id: 'a', text: 'interface Gi0/1 → no ip access-group 10 out' },
+        { id: 'b', text: 'access-list 10 deny any' },
+        { id: 'c', text: 'no shutdown' },
+        { id: 'd', text: 'ip route 0.0.0.0 0.0.0.0 Gi0/1' },
+      ],
+      correct: ['a'],
+      explanation:
+        'La ACL 10 tenía un `deny any` aplicado saliente, descartando todo. Quitando la aplicación con `no ip access-group 10 out` (o corrigiendo la ACL) el tráfico vuelve a pasar.',
+      labHint:
+        'Revisa `show ip interface Gi0/1` y `show access-lists`; luego en Gi0/1: `no ip access-group 10 out`.',
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 120, y: 200 })
+          .router('r1', 'R1', { x: 360, y: 200 })
+          .pc('pc2', 'PC2', { x: 600, y: 200 });
+        b.link('pc1', 'FastEthernet0', 'r1', 'GigabitEthernet0/0');
+        b.link('r1', 'GigabitEthernet0/1', 'pc2', 'FastEthernet0');
+        b.ip('pc1', 'FastEthernet0', '192.168.11.10', M24).gateway('pc1', '192.168.11.1');
+        b.ip('pc2', 'FastEthernet0', '192.168.12.10', M24).gateway('pc2', '192.168.12.1');
+        b.ip('r1', 'GigabitEthernet0/0', '192.168.11.1', M24);
+        b.ip('r1', 'GigabitEthernet0/1', '192.168.12.1', M24);
+        const r1 = dev(b.topology, 'r1');
+        r1.config.acls['10'] = {
+          type: 'standard',
+          entries: [
+            { type: 'standard', action: 'deny', srcIp: '0.0.0.0', srcWildcard: '255.255.255.255' },
+          ],
+        };
+        r1.getInterface('GigabitEthernet0/1').aclOut = '10'; // fault
+        return b.build();
+      },
+      checks: [pingSucceeds('PC1', '192.168.12.10')],
+      solve(t) {
+        dev(t, 'r1').getInterface('GigabitEthernet0/1').aclOut = null;
+      },
+    },
+
+    {
+      id: 'pqx-c-mask-26',
+      domain: DOMAINS.FUND,
+      difficulty: 'Intermediate',
+      prompt: '¿Qué máscara en decimal corresponde a un prefijo /26?',
+      choices: [
+        { id: 'a', text: '255.255.255.192' },
+        { id: 'b', text: '255.255.255.224' },
+        { id: 'c', text: '255.255.255.240' },
+        { id: 'd', text: '255.255.255.128' },
+      ],
+      correct: ['a'],
+      explanation:
+        'Un /26 pone 26 bits en 1: los tres primeros octetos (24) más 2 bits del cuarto (128+64=192). Máscara: 255.255.255.192.',
+      labHint: 'El último octeto de /26 es 11000000 = 192.',
+      createTopology() {
+        return twoPcSwitch();
+      },
+      checks: [],
+    },
+
+    {
+      id: 'pqx-c-subnets-borrow',
+      domain: DOMAINS.FUND,
+      difficulty: 'Intermediate',
+      prompt: 'Si tomas prestados 3 bits de host para subnetear, ¿cuántas subredes obtienes?',
+      choices: [
+        { id: 'a', text: '8' },
+        { id: 'b', text: '6' },
+        { id: 'c', text: '16' },
+        { id: 'd', text: '3' },
+      ],
+      correct: ['a'],
+      explanation:
+        'Con subnetting sin clases se cuentan todas: 2^3 = 8 subredes. (La regla antigua 2^n−2 ya no aplica en IOS moderno.)',
+      labHint: 'Cada bit prestado duplica el número de subredes: 2^bits.',
+      createTopology() {
+        return twoPcSwitch();
+      },
+      checks: [],
+    },
+
+    {
+      id: 'pqx-c-erase-startup',
+      domain: DOMAINS.SVC,
+      difficulty: 'Beginner',
+      prompt: '¿Qué comando borra la configuración de inicio para dejar el equipo "de fábrica"?',
+      choices: [
+        { id: 'a', text: 'erase startup-config' },
+        { id: 'b', text: 'delete running-config' },
+        { id: 'c', text: 'no startup-config' },
+        { id: 'd', text: 'clear config' },
+      ],
+      correct: ['a'],
+      explanation:
+        '`erase startup-config` (o `write erase`) borra la NVRAM; tras `reload` el equipo arranca sin configuración. La running-config actual no cambia hasta reiniciar.',
+      labHint: 'En modo privilegiado: `erase startup-config`, luego `reload`.',
+      createTopology() {
+        return simpleRouterLan();
+      },
+      checks: [],
+    },
   ];
 }
 

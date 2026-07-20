@@ -783,8 +783,105 @@ export function generateWrongRouterIpScenarios(count = 4) {
 }
 
 /**
+ * FAMILY 12 — "wrong subnet mask": PC2 has the right address but a mask that
+ * puts its own gateway/peer out of subnet, so it can't reach it locally.
+ * @param {number} count
+ * @returns {object[]}
+ */
+export function generateWrongMaskScenarios(count = 4) {
+  const scenarios = [];
+  for (let i = 0; i < count; i += 1) {
+    const subnet = `192.168.${170 + i}`;
+    const pc1Ip = `${subnet}.10`;
+    const pc2Ip = `${subnet}.130`;
+    const wrongMask = '255.255.255.128'; // /25 splits .10 and .130 apart
+    scenarios.push({
+      id: `wrong-mask-${170 + i}`,
+      title: `Máscara incorrecta: PC2 no ve a PC1 (${subnet}.0/24)`,
+      difficulty: 'Intermediate',
+      objective: `Corrige la máscara de PC2 para que haga ping a PC1 (${pc1Ip}).`,
+      description: `PC1 y PC2 deberían estar en ${subnet}.0/24, pero PC2 (${pc2Ip}) tiene máscara ${wrongMask} (/25). Con esa máscara, PC1 le queda "fuera de su subred".`,
+      generated: true,
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 120, y: 160 })
+          .switch('sw1', 'SW1', { x: 360, y: 260 })
+          .pc('pc2', 'PC2', { x: 600, y: 160 });
+        b.link('pc1', 'FastEthernet0', 'sw1', 'FastEthernet0/1');
+        b.link('pc2', 'FastEthernet0', 'sw1', 'FastEthernet0/2');
+        b.ip('pc1', 'FastEthernet0', pc1Ip, MASK24);
+        b.ip('pc2', 'FastEthernet0', pc2Ip, wrongMask); // fault: wrong mask
+        return b.build();
+      },
+      checks: [
+        interfaceHasIp('PC2', 'FastEthernet0', pc2Ip, MASK24, { points: 1 }),
+        pingSucceeds('PC2', pc1Ip, { points: 2 }),
+      ],
+      hints: [
+        `Ambos hosts están en un /24; la máscara de PC2 debe ser ${MASK24}, no ${wrongMask}.`,
+        `En PC2: interface FastEthernet0, luego \`ip address ${pc2Ip} ${MASK24}\`.`,
+      ],
+      explanation: `Con máscara /25, PC2 calculaba que ${pc1Ip} estaba en otra subred y buscaba un gateway inexistente. Con ${MASK24} ambos vuelven a la misma /24 y el ping local funciona.`,
+    });
+  }
+  return scenarios;
+}
+
+/**
+ * FAMILY 13 — "an ACL blocks everyone": a correctly-addressed network fails
+ * because a misapplied ACL denies all traffic outbound. Remove/fix it.
+ * @param {number} count
+ * @returns {object[]}
+ */
+export function generateAclBlockScenarios(count = 4) {
+  const scenarios = [];
+  for (let i = 0; i < count; i += 1) {
+    const lanA = `192.168.${180 + i}`;
+    const lanB = `192.168.${190 + i}`;
+    const pc1Ip = `${lanA}.10`;
+    const pc2Ip = `${lanB}.10`;
+    scenarios.push({
+      id: `acl-block-${180 + i}`,
+      title: `ACL que bloquea todo: nadie pasa (${lanB}.0/24)`,
+      difficulty: 'Advanced',
+      objective: `Restaura la conectividad para que PC1 (${pc1Ip}) haga ping a PC2 (${pc2Ip}).`,
+      description: `El direccionamiento es correcto, pero una ACL aplicada en Gi0/1 de R1 (saliente) deniega TODO el tráfico. Quita o corrige la ACL.`,
+      generated: true,
+      createTopology() {
+        const b = new TopologyBuilder();
+        b.pc('pc1', 'PC1', { x: 120, y: 200 })
+          .router('r1', 'R1', { x: 360, y: 200 })
+          .pc('pc2', 'PC2', { x: 600, y: 200 });
+        b.link('pc1', 'FastEthernet0', 'r1', 'GigabitEthernet0/0');
+        b.link('r1', 'GigabitEthernet0/1', 'pc2', 'FastEthernet0');
+        b.ip('pc1', 'FastEthernet0', pc1Ip, MASK24).gateway('pc1', `${lanA}.1`);
+        b.ip('pc2', 'FastEthernet0', pc2Ip, MASK24).gateway('pc2', `${lanB}.1`);
+        b.ip('r1', 'GigabitEthernet0/0', `${lanA}.1`, MASK24);
+        b.ip('r1', 'GigabitEthernet0/1', `${lanB}.1`, MASK24);
+        const r1 = b.topology.getNode('r1').device;
+        r1.config.acls['10'] = {
+          type: 'standard',
+          entries: [
+            { type: 'standard', action: 'deny', srcIp: '0.0.0.0', srcWildcard: '255.255.255.255' },
+          ],
+        };
+        r1.getInterface('GigabitEthernet0/1').aclOut = '10'; // fault: blocks everything
+        return b.build();
+      },
+      checks: [pingSucceeds('PC1', pc2Ip, { points: 2 })],
+      hints: [
+        'La ruta y el direccionamiento están bien: revisa `show ip interface Gi0/1` y `show access-lists`.',
+        'En R1: interface Gi0/1, `no ip access-group 10 out` (o corrige la ACL para permitir el tráfico).',
+      ],
+      explanation: `La ACL 10 tenía un \`deny any\` aplicado saliente, así que descartaba todos los paquetes hacia ${lanB}.0/24. Al quitar el \`ip access-group\` (o permitir el tráfico) la conectividad se restablece.`,
+    });
+  }
+  return scenarios;
+}
+
+/**
  * The full catalog: authored scenarios first, then the generated drill
- * families (eleven different skills, not one repeated template).
+ * families (thirteen different skills, not one repeated template).
  * @returns {object[]}
  */
 export function allScenarios() {
@@ -805,5 +902,7 @@ export function allScenarios() {
     ...generateOspfTransitScenarios(),
     ...generateWrongGatewayScenarios(),
     ...generateWrongRouterIpScenarios(),
+    ...generateWrongMaskScenarios(),
+    ...generateAclBlockScenarios(),
   ];
 }
