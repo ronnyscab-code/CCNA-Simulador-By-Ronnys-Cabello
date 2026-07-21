@@ -617,4 +617,1057 @@ export const CCNP_QUESTIONS = Object.freeze([
       'Netmiko (built on Paramiko) simplifies SSH connections and command handling across many network OSes. For model-driven programmability you’d use ncclient (NETCONF) or requests (RESTCONF).',
     reference: '350-401 ENCOR — Python for networking',
   }),
+
+  // ============ Batch 2 — expansion to 100 ============================
+
+  // --- Advanced Routing ------------------------------------------------
+  q({
+    id: 'np2-ibgp-ad',
+    domain: D.ROUTING,
+    prompt: 'What is the default administrative distance of an internal BGP (iBGP) route?',
+    choices: [
+      { id: 'a', text: '200' },
+      { id: 'b', text: '20' },
+      { id: 'c', text: '110' },
+      { id: 'd', text: '90' },
+    ],
+    correct: ['a'],
+    explanation:
+      'iBGP is 200 — higher (less trusted) than most IGPs, so an IGP route to the same prefix usually wins. eBGP is 20.',
+    reference: '350-401 ENCOR — BGP AD',
+  }),
+  q({
+    id: 'np2-bgp-localpref',
+    domain: D.ROUTING,
+    difficulty: 'Advanced',
+    prompt:
+      'Which BGP attribute is shared within an AS and influences the OUTBOUND path (higher is preferred)?',
+    choices: [
+      { id: 'a', text: 'Local Preference' },
+      { id: 'b', text: 'MED' },
+      { id: 'c', text: 'Weight' },
+      { id: 'd', text: 'Origin' },
+    ],
+    correct: ['a'],
+    explanation:
+      'Local Preference is advertised to all iBGP peers and steers how the local AS exits (outbound). Higher wins; default 100.',
+    reference: '350-401 ENCOR — BGP attributes',
+  }),
+  q({
+    id: 'np2-bgp-med',
+    domain: D.ROUTING,
+    difficulty: 'Advanced',
+    prompt:
+      'Which BGP attribute suggests to a neighboring AS how to send traffic INBOUND, where the LOWER value is preferred?',
+    choices: [
+      { id: 'a', text: 'MED (Multi-Exit Discriminator)' },
+      { id: 'b', text: 'Local Preference' },
+      { id: 'c', text: 'Weight' },
+      { id: 'd', text: 'AS-Path' },
+    ],
+    correct: ['a'],
+    explanation:
+      'MED is sent to an external AS to hint the preferred entry point; the lower MED wins. It is non-transitive across multiple ASes.',
+    reference: '350-401 ENCOR — MED',
+  }),
+  q({
+    id: 'np2-ospf-dr-election',
+    domain: D.ROUTING,
+    prompt: 'On a broadcast OSPF segment, how is the Designated Router (DR) elected?',
+    choices: [
+      { id: 'a', text: 'Highest OSPF interface priority; ties broken by highest Router-ID' },
+      { id: 'b', text: 'Lowest IP address on the segment' },
+      { id: 'c', text: 'The router that booted first' },
+      { id: 'd', text: 'Highest bandwidth interface' },
+    ],
+    correct: ['a'],
+    explanation:
+      'DR/BDR election uses the highest interface priority (default 1); a tie is broken by the highest Router-ID. Priority 0 means the router never becomes DR/BDR.',
+    reference: '350-401 ENCOR — OSPF DR/BDR',
+  }),
+  q({
+    id: 'np2-ospf-p2p',
+    domain: D.ROUTING,
+    prompt: 'On which OSPF network type is NO DR/BDR elected?',
+    choices: [
+      { id: 'a', text: 'Point-to-point' },
+      { id: 'b', text: 'Broadcast' },
+      { id: 'c', text: 'Non-broadcast (NBMA)' },
+      { id: 'd', text: 'Broadcast multi-access' },
+    ],
+    correct: ['a'],
+    explanation:
+      'Point-to-point (and point-to-multipoint) links have no DR/BDR. Broadcast and NBMA network types elect a DR/BDR to reduce adjacencies.',
+    reference: '350-401 ENCOR — OSPF network types',
+  }),
+  q({
+    id: 'np2-eigrp-fs',
+    domain: D.ROUTING,
+    difficulty: 'Advanced',
+    prompt: 'In EIGRP, what defines a Feasible Successor?',
+    choices: [
+      {
+        id: 'a',
+        text: 'A backup route whose Reported Distance is less than the Feasible Distance (feasibility condition)',
+      },
+      { id: 'b', text: 'The route currently installed in the routing table' },
+      { id: 'c', text: 'Any route with the same metric as the successor' },
+      { id: 'd', text: 'A route learned from a different autonomous system' },
+    ],
+    correct: ['a'],
+    explanation:
+      'A Feasible Successor is a loop-free backup: its neighbor’s Reported Distance is lower than the current Feasible Distance, so it can be used immediately if the successor fails.',
+    reference: '350-401 ENCOR — EIGRP DUAL',
+  }),
+  q({
+    id: 'np2-eigrp-k',
+    domain: D.ROUTING,
+    prompt: 'By default, which two metrics does EIGRP use in its composite metric (K1 and K3)?',
+    choices: [
+      { id: 'a', text: 'Bandwidth and delay' },
+      { id: 'b', text: 'Bandwidth and load' },
+      { id: 'c', text: 'Delay and reliability' },
+      { id: 'd', text: 'Hop count and MTU' },
+    ],
+    correct: ['a'],
+    explanation:
+      'Default K values enable K1 (bandwidth) and K3 (delay). Load (K2), reliability (K4/K5), and MTU are off by default.',
+    reference: '350-401 ENCOR — EIGRP metric',
+  }),
+  q({
+    id: 'np2-ospf-nssa',
+    domain: D.ROUTING,
+    difficulty: 'Advanced',
+    prompt: 'Which LSA type carries external routes inside an OSPF NSSA?',
+    choices: [
+      { id: 'a', text: 'Type 7' },
+      { id: 'b', text: 'Type 5' },
+      { id: 'c', text: 'Type 3' },
+      { id: 'd', text: 'Type 1' },
+    ],
+    correct: ['a'],
+    explanation:
+      'An NSSA cannot carry Type 5 LSAs, so its ASBR uses Type 7. The ABR translates Type 7 to Type 5 when injecting them into the backbone.',
+    reference: '300-410 ENARSI — NSSA',
+  }),
+  q({
+    id: 'np2-as-prepend',
+    domain: D.ROUTING,
+    difficulty: 'Advanced',
+    prompt:
+      'Which technique makes one BGP path less preferred for INBOUND traffic from other ASes?',
+    choices: [
+      { id: 'a', text: 'AS-path prepending' },
+      { id: 'b', text: 'Raising Local Preference' },
+      { id: 'c', text: 'Raising Weight' },
+      { id: 'd', text: 'Lowering the OSPF cost' },
+    ],
+    correct: ['a'],
+    explanation:
+      'Prepending your own ASN multiple times lengthens the AS-path, making that path less attractive to neighbors — a common way to influence inbound traffic.',
+    reference: '350-401 ENCOR — BGP path manipulation',
+  }),
+
+  // --- Enterprise Switching -------------------------------------------
+  q({
+    id: 'np2-portfast',
+    domain: D.SWITCHING,
+    prompt: 'What does PortFast do on an access port connected to a host?',
+    choices: [
+      { id: 'a', text: 'Skips listening/learning and moves straight to forwarding' },
+      { id: 'b', text: 'Forces the port to become the root port' },
+      { id: 'c', text: 'Negotiates a trunk' },
+      { id: 'd', text: 'Disables spanning tree switch-wide' },
+    ],
+    correct: ['a'],
+    explanation:
+      'PortFast transitions an edge port immediately to forwarding, avoiding ~30s of STP delay. It should only face hosts; pair it with BPDU Guard.',
+    reference: '350-401 ENCOR — STP edge ports',
+  }),
+  q({
+    id: 'np2-rootguard',
+    domain: D.SWITCHING,
+    prompt: 'What does Root Guard do when a port receives a superior BPDU?',
+    choices: [
+      { id: 'a', text: 'Puts the port in root-inconsistent (blocked) state' },
+      { id: 'b', text: 'Err-disables the port permanently' },
+      { id: 'c', text: 'Makes that switch the root' },
+      { id: 'd', text: 'Converts the port to a trunk' },
+    ],
+    correct: ['a'],
+    explanation:
+      'Root Guard prevents a downstream switch from becoming root: a superior BPDU puts the port in root-inconsistent state until the BPDUs stop, then it recovers.',
+    reference: '350-401 ENCOR — STP protection',
+  }),
+  q({
+    id: 'np2-loopguard',
+    domain: D.SWITCHING,
+    difficulty: 'Advanced',
+    prompt: 'What problem does Loop Guard protect against?',
+    choices: [
+      {
+        id: 'a',
+        text: 'A blocking port wrongly moving to forwarding when it stops receiving BPDUs',
+      },
+      { id: 'b', text: 'A rogue DHCP server' },
+      { id: 'c', text: 'MAC flooding attacks' },
+      { id: 'd', text: 'Duplicate IP addresses' },
+    ],
+    correct: ['a'],
+    explanation:
+      'If a non-designated (blocking) port stops hearing BPDUs (e.g. unidirectional link), STP would unblock it and form a loop. Loop Guard keeps it in loop-inconsistent (blocking) instead.',
+    reference: '350-401 ENCOR — Loop Guard',
+  }),
+  q({
+    id: 'np2-svi',
+    domain: D.SWITCHING,
+    prompt: 'On a multilayer switch, what is a Switched Virtual Interface (SVI) used for?',
+    choices: [
+      { id: 'a', text: 'Routing between VLANs (a Layer 3 interface for a VLAN)' },
+      { id: 'b', text: 'Bundling physical ports' },
+      { id: 'c', text: 'Extending a VLAN over a trunk' },
+      { id: 'd', text: 'Providing console access' },
+    ],
+    correct: ['a'],
+    explanation:
+      'An SVI (`interface vlan X`) gives a VLAN a Layer 3 presence, enabling inter-VLAN routing on a Layer 3 switch (with `ip routing` enabled).',
+    reference: '350-401 ENCOR — inter-VLAN routing',
+  }),
+  q({
+    id: 'np2-router-on-stick',
+    domain: D.SWITCHING,
+    prompt: 'In router-on-a-stick, which subinterface command associates it with VLAN 20 (802.1Q)?',
+    choices: [
+      { id: 'a', text: 'encapsulation dot1q 20' },
+      { id: 'b', text: 'switchport access vlan 20' },
+      { id: 'c', text: 'vlan 20' },
+      { id: 'd', text: 'trunk vlan 20' },
+    ],
+    correct: ['a'],
+    explanation:
+      'On a router subinterface (e.g. Gi0/0.20) you set `encapsulation dot1q 20`, then the IP address that serves as VLAN 20’s gateway.',
+    reference: '350-401 ENCOR — router-on-a-stick',
+  }),
+  q({
+    id: 'np2-mst',
+    domain: D.SWITCHING,
+    difficulty: 'Advanced',
+    prompt: 'What is the main benefit of Multiple Spanning Tree (MST)?',
+    choices: [
+      { id: 'a', text: 'Mapping many VLANs to a few STP instances to save CPU/BPDU overhead' },
+      { id: 'b', text: 'Running one instance per VLAN automatically' },
+      { id: 'c', text: 'Eliminating the need for a root bridge' },
+      { id: 'd', text: 'Encrypting BPDUs' },
+    ],
+    correct: ['a'],
+    explanation:
+      'MST groups VLANs into instances (MSTIs). Instead of one instance per VLAN (PVST+), you run a handful of instances, reducing overhead in large VLAN environments.',
+    reference: '350-401 ENCOR — MST',
+  }),
+  q({
+    id: 'np2-udld',
+    domain: D.SWITCHING,
+    prompt: 'What does UDLD detect?',
+    choices: [
+      { id: 'a', text: 'Unidirectional links (traffic flows only one way), common on fiber' },
+      { id: 'b', text: 'Duplicate MAC addresses' },
+      { id: 'c', text: 'VLAN mismatches' },
+      { id: 'd', text: 'Excessive broadcast traffic' },
+    ],
+    correct: ['a'],
+    explanation:
+      'UniDirectional Link Detection uses Layer 2 messages to confirm bidirectional connectivity; on a one-way (often fiber) fault it can err-disable the port, preventing STP loops.',
+    reference: '350-401 ENCOR — UDLD',
+  }),
+  q({
+    id: 'np2-dtp-desirable',
+    domain: D.SWITCHING,
+    prompt: 'Which DTP mode actively tries to negotiate a trunk with the neighbor?',
+    choices: [
+      { id: 'a', text: 'dynamic desirable' },
+      { id: 'b', text: 'dynamic auto' },
+      { id: 'c', text: 'access' },
+      { id: 'd', text: 'nonegotiate' },
+    ],
+    correct: ['a'],
+    explanation:
+      'Dynamic desirable actively sends DTP frames to form a trunk. Dynamic auto only trunks if asked. Best practice is to hard-set `switchport mode trunk` + `switchport nonegotiate`.',
+    reference: '350-401 ENCOR — DTP',
+  }),
+  q({
+    id: 'np2-voice-vlan',
+    domain: D.SWITCHING,
+    prompt: 'What is the purpose of a voice VLAN on an access port with an IP phone?',
+    choices: [
+      {
+        id: 'a',
+        text: 'Carry phone traffic tagged in a separate VLAN while the PC data stays untagged',
+      },
+      { id: 'b', text: 'Trunk all VLANs to the phone' },
+      { id: 'c', text: 'Disable QoS on the port' },
+      { id: 'd', text: 'Assign the phone a routed interface' },
+    ],
+    correct: ['a'],
+    explanation:
+      'The voice VLAN lets a phone tag its traffic (for QoS/segmentation) while the attached PC uses the untagged access VLAN — over the same physical port.',
+    reference: '350-401 ENCOR — voice VLAN',
+  }),
+
+  // --- FHRP & High Availability ---------------------------------------
+  q({
+    id: 'np2-hsrp-udp',
+    domain: D.REDUNDANCY,
+    prompt: 'HSRP version 1 sends hellos to which multicast address and UDP port?',
+    choices: [
+      { id: 'a', text: '224.0.0.2, UDP 1985' },
+      { id: 'b', text: '224.0.0.18, UDP 112' },
+      { id: 'c', text: '224.0.0.102, UDP 3222' },
+      { id: 'd', text: '224.0.0.5, UDP 520' },
+    ],
+    correct: ['a'],
+    explanation:
+      'HSRPv1 uses 224.0.0.2/UDP 1985. HSRPv2 uses 224.0.0.102/UDP 3222. VRRP uses 224.0.0.18 (IP protocol 112).',
+    reference: '350-401 ENCOR — HSRP',
+  }),
+  q({
+    id: 'np2-hsrp-states',
+    domain: D.REDUNDANCY,
+    difficulty: 'Advanced',
+    prompt: 'Which two HSRP states describe the router that forwards traffic and its hot backup?',
+    choices: [
+      { id: 'a', text: 'Active and Standby' },
+      { id: 'b', text: 'Master and Backup' },
+      { id: 'c', text: 'Primary and Secondary' },
+      { id: 'd', text: 'Root and Alternate' },
+    ],
+    correct: ['a'],
+    explanation:
+      'HSRP’s forwarding router is Active and its backup is Standby (the full state machine is Init, Learn, Listen, Speak, Standby, Active). VRRP uses Master/Backup terminology.',
+    reference: '350-401 ENCOR — HSRP states',
+  }),
+  q({
+    id: 'np2-vrrp-open',
+    domain: D.REDUNDANCY,
+    prompt: 'Which First Hop Redundancy Protocol is an open (IETF) standard?',
+    choices: [
+      { id: 'a', text: 'VRRP' },
+      { id: 'b', text: 'HSRP' },
+      { id: 'c', text: 'GLBP' },
+      { id: 'd', text: 'PAgP' },
+    ],
+    correct: ['a'],
+    explanation:
+      'VRRP is the IETF open standard (RFC 5798). HSRP and GLBP are Cisco-proprietary. PAgP is a Cisco EtherChannel protocol, not an FHRP.',
+    reference: '350-401 ENCOR — FHRP',
+  }),
+  q({
+    id: 'np2-hsrpv2',
+    domain: D.REDUNDANCY,
+    difficulty: 'Advanced',
+    prompt: 'What does HSRP version 2 add over version 1?',
+    choices: [
+      { id: 'a', text: 'Group numbers up to 4095 and IPv6 support' },
+      { id: 'b', text: 'Encryption of all hellos by default' },
+      { id: 'c', text: 'Automatic load balancing' },
+      { id: 'd', text: 'Removal of the virtual IP' },
+    ],
+    correct: ['a'],
+    explanation:
+      'HSRPv2 raises the group range from 0–255 to 0–4095, supports IPv6, and uses a new multicast (224.0.0.102) and virtual MAC range.',
+    reference: '350-401 ENCOR — HSRPv2',
+  }),
+  q({
+    id: 'np2-hsrp-track',
+    domain: D.REDUNDANCY,
+    difficulty: 'Advanced',
+    prompt: 'Why configure HSRP interface tracking?',
+    choices: [
+      { id: 'a', text: 'To decrement priority (and fail over) when a tracked uplink goes down' },
+      { id: 'b', text: 'To encrypt HSRP hellos' },
+      { id: 'c', text: 'To increase the virtual IP count' },
+      { id: 'd', text: 'To disable preemption' },
+    ],
+    correct: ['a'],
+    explanation:
+      'Tracking lowers the Active router’s priority when its tracked interface (e.g. WAN uplink) fails, so — with preempt enabled on the peer — the Standby takes over.',
+    reference: '350-401 ENCOR — HSRP tracking',
+  }),
+  q({
+    id: 'np2-vrrp-owner',
+    domain: D.REDUNDANCY,
+    difficulty: 'Advanced',
+    prompt: 'In VRRP, what priority does the router that OWNS the virtual IP address have?',
+    choices: [
+      { id: 'a', text: '255' },
+      { id: 'b', text: '100' },
+      { id: 'c', text: '0' },
+      { id: 'd', text: '1' },
+    ],
+    correct: ['a'],
+    explanation:
+      'If a VRRP router’s real interface IP equals the virtual IP (the address owner), its priority is 255 and it is always Master when up. Default priority otherwise is 100.',
+    reference: '350-401 ENCOR — VRRP',
+  }),
+  q({
+    id: 'np2-stackwise',
+    domain: D.REDUNDANCY,
+    prompt: 'What does Cisco StackWise provide?',
+    choices: [
+      { id: 'a', text: 'Multiple physical switches managed as one logical switch' },
+      { id: 'b', text: 'Encrypted inter-switch links' },
+      { id: 'c', text: 'A backup default gateway protocol' },
+      { id: 'd', text: 'Automatic VLAN pruning' },
+    ],
+    correct: ['a'],
+    explanation:
+      'StackWise joins switches over a stack cable into a single logical unit with one control plane/management IP, shared config, and cross-stack EtherChannel.',
+    reference: '350-401 ENCOR — stacking',
+  }),
+  q({
+    id: 'np2-sso',
+    domain: D.REDUNDANCY,
+    difficulty: 'Advanced',
+    prompt: 'What do SSO with NSF provide on a dual-supervisor chassis?',
+    choices: [
+      {
+        id: 'a',
+        text: 'Stateful failover to the standby supervisor with minimal forwarding disruption',
+      },
+      { id: 'b', text: 'Load balancing across two gateways' },
+      { id: 'c', text: 'Encryption of the control plane' },
+      { id: 'd', text: 'Automatic firmware upgrades' },
+    ],
+    correct: ['a'],
+    explanation:
+      'Stateful Switchover (SSO) synchronizes state to the standby supervisor; Nonstop Forwarding (NSF) keeps forwarding during the switchover so neighbors don’t see an outage.',
+    reference: '350-401 ENCOR — SSO/NSF',
+  }),
+  q({
+    id: 'np2-glbp-avg',
+    domain: D.REDUNDANCY,
+    difficulty: 'Advanced',
+    prompt: 'In GLBP, what is the role of the Active Virtual Gateway (AVG)?',
+    choices: [
+      {
+        id: 'a',
+        text: 'It replies to ARP by handing out different virtual MACs so multiple forwarders share the load',
+      },
+      { id: 'b', text: 'It is the only router that forwards traffic' },
+      { id: 'c', text: 'It encrypts GLBP hellos' },
+      { id: 'd', text: 'It selects the STP root' },
+    ],
+    correct: ['a'],
+    explanation:
+      'The AVG assigns virtual MAC addresses to the Active Virtual Forwarders (AVFs) and answers ARP with them, so hosts spread their gateway traffic across routers.',
+    reference: '350-401 ENCOR — GLBP',
+  }),
+
+  // --- Network Services & QoS -----------------------------------------
+  q({
+    id: 'np2-cos-vs-dscp',
+    domain: D.SERVICES,
+    prompt: 'Which QoS marking is a Layer 2 (802.1p) field, and how many bits does it have?',
+    choices: [
+      { id: 'a', text: 'CoS — 3 bits (in the 802.1Q tag)' },
+      { id: 'b', text: 'DSCP — 6 bits' },
+      { id: 'c', text: 'CoS — 6 bits' },
+      { id: 'd', text: 'IP Precedence — 8 bits' },
+    ],
+    correct: ['a'],
+    explanation:
+      'CoS is the 3-bit 802.1p field inside the 802.1Q tag (Layer 2, values 0–7). DSCP is the 6-bit Layer 3 field in the IP header (0–63).',
+    reference: '350-401 ENCOR — QoS marking',
+  }),
+  q({
+    id: 'np2-llq',
+    domain: D.SERVICES,
+    difficulty: 'Advanced',
+    prompt: 'What is Low Latency Queuing (LLQ) primarily used for?',
+    choices: [
+      { id: 'a', text: 'A strict-priority queue for delay-sensitive traffic like voice' },
+      { id: 'b', text: 'Dropping packets before the queue is full' },
+      { id: 'c', text: 'Buffering bursts of bulk data' },
+      { id: 'd', text: 'Marking traffic at the edge' },
+    ],
+    correct: ['a'],
+    explanation:
+      'LLQ adds a strict-priority queue (policed) to CBWFQ, giving voice/real-time traffic minimal delay and jitter while other classes get bandwidth guarantees.',
+    reference: '350-401 ENCOR — queuing',
+  }),
+  q({
+    id: 'np2-wred',
+    domain: D.SERVICES,
+    difficulty: 'Advanced',
+    prompt: 'What does Weighted Random Early Detection (WRED) do?',
+    choices: [
+      {
+        id: 'a',
+        text: 'Drops packets probabilistically before the queue fills, avoiding tail drop and TCP global synchronization',
+      },
+      { id: 'b', text: 'Guarantees bandwidth to voice' },
+      { id: 'c', text: 'Shapes traffic to a committed rate' },
+      { id: 'd', text: 'Encrypts congested flows' },
+    ],
+    correct: ['a'],
+    explanation:
+      'WRED starts dropping lower-priority packets as the queue approaches full, preventing tail drop and the global synchronization that hurts TCP throughput.',
+    reference: '350-401 ENCOR — congestion avoidance',
+  }),
+  q({
+    id: 'np2-snmpv3',
+    domain: D.SERVICES,
+    prompt: 'What does SNMPv3 add over v2c?',
+    choices: [
+      { id: 'a', text: 'Authentication and encryption (authPriv)' },
+      { id: 'b', text: 'A faster polling interval' },
+      { id: 'c', text: 'Support for more OIDs' },
+      { id: 'd', text: 'Automatic device discovery' },
+    ],
+    correct: ['a'],
+    explanation:
+      'SNMPv3 provides message integrity, authentication, and (with authPriv) encryption — a major security improvement over v2c’s clear-text community strings.',
+    reference: '350-401 ENCOR — SNMP',
+  }),
+  q({
+    id: 'np2-syslog-sev',
+    domain: D.SERVICES,
+    prompt: 'In syslog, which numeric severity level is the MOST severe?',
+    choices: [
+      { id: 'a', text: '0 (Emergency)' },
+      { id: 'b', text: '7 (Debugging)' },
+      { id: 'c', text: '5 (Notification)' },
+      { id: 'd', text: '3 (Error)' },
+    ],
+    correct: ['a'],
+    explanation:
+      'Severities run 0–7: 0 Emergency (most severe) to 7 Debugging (least). A configured level also includes everything more severe than it.',
+    reference: '350-401 ENCOR — syslog',
+  }),
+  q({
+    id: 'np2-dhcp-relay',
+    domain: D.SERVICES,
+    prompt: 'Which command lets a router forward DHCP requests to a server on another subnet?',
+    choices: [
+      { id: 'a', text: 'ip helper-address <server-ip>' },
+      { id: 'b', text: 'ip dhcp relay enable' },
+      { id: 'c', text: 'ip forward-protocol dhcp' },
+      { id: 'd', text: 'ip dhcp pool relay' },
+    ],
+    correct: ['a'],
+    explanation:
+      '`ip helper-address` on the client-facing interface turns broadcast DHCP requests into unicasts toward the specified server (and relays a few other UDP services).',
+    reference: '350-401 ENCOR — DHCP relay',
+  }),
+  q({
+    id: 'np2-dns-a',
+    domain: D.SERVICES,
+    difficulty: 'Beginner',
+    prompt: 'Which DNS record maps a hostname to an IPv4 address?',
+    choices: [
+      { id: 'a', text: 'A record' },
+      { id: 'b', text: 'AAAA record' },
+      { id: 'c', text: 'MX record' },
+      { id: 'd', text: 'PTR record' },
+    ],
+    correct: ['a'],
+    explanation:
+      'An A record maps a name to an IPv4 address; AAAA maps to IPv6; MX is mail exchange; PTR is reverse (IP→name).',
+    reference: '350-401 ENCOR — DNS',
+  }),
+  q({
+    id: 'np2-netflow-export',
+    domain: D.SERVICES,
+    prompt: 'In Flexible NetFlow, what does the flow exporter do?',
+    choices: [
+      { id: 'a', text: 'Sends collected flow records to an external collector' },
+      { id: 'b', text: 'Defines which fields identify a flow' },
+      { id: 'c', text: 'Applies QoS to flows' },
+      { id: 'd', text: 'Encrypts the traffic' },
+    ],
+    correct: ['a'],
+    explanation:
+      'A flow record defines the key/non-key fields; the flow monitor applies it to an interface; the flow exporter ships the cached records to a collector (e.g. over UDP).',
+    reference: '350-401 ENCOR — NetFlow',
+  }),
+  q({
+    id: 'np2-ntp-auth',
+    domain: D.SERVICES,
+    prompt: 'What is the purpose of NTP authentication?',
+    choices: [
+      { id: 'a', text: 'To ensure the device only synchronizes with a trusted time source' },
+      { id: 'b', text: 'To encrypt all device traffic' },
+      { id: 'c', text: 'To speed up clock convergence' },
+      { id: 'd', text: 'To assign a stratum of 1' },
+    ],
+    correct: ['a'],
+    explanation:
+      'NTP authentication (keys + `ntp authenticate`/`trusted-key`) prevents a client from trusting a rogue NTP server that could skew its clock and break logging/certs.',
+    reference: '350-401 ENCOR — NTP security',
+  }),
+  q({
+    id: 'np2-pat-overload',
+    domain: D.SERVICES,
+    prompt:
+      'Which command configures PAT (NAT overload) to the outside interface for the sources permitted by ACL 1?',
+    choices: [
+      { id: 'a', text: 'ip nat inside source list 1 interface Gi0/1 overload' },
+      { id: 'b', text: 'ip nat outside source static 1 Gi0/1' },
+      { id: 'c', text: 'ip nat pool 1 overload' },
+      { id: 'd', text: 'ip nat inside source static list 1' },
+    ],
+    correct: ['a'],
+    explanation:
+      'PAT shares one public IP across many inside hosts by distinguishing them via port numbers: `ip nat inside source list <acl> interface <outside> overload`.',
+    reference: '350-401 ENCOR — NAT/PAT',
+  }),
+
+  // --- Overlay & Virtualization ---------------------------------------
+  q({
+    id: 'np2-gre-proto',
+    domain: D.OVERLAY,
+    prompt: 'GRE is which IP protocol number, and does it encrypt?',
+    choices: [
+      { id: 'a', text: 'Protocol 47; no, GRE does not encrypt' },
+      { id: 'b', text: 'Protocol 50; yes, it encrypts' },
+      { id: 'c', text: 'UDP 4789; yes, it encrypts' },
+      { id: 'd', text: 'Protocol 89; no encryption' },
+    ],
+    correct: ['a'],
+    explanation:
+      'GRE is IP protocol 47 and provides no confidentiality. For encryption you combine it with IPsec (GRE over IPsec).',
+    reference: '350-401 ENCOR — GRE',
+  }),
+  q({
+    id: 'np2-ipsec-gre',
+    domain: D.OVERLAY,
+    difficulty: 'Advanced',
+    prompt: 'Why is GRE often combined with IPsec?',
+    choices: [
+      {
+        id: 'a',
+        text: 'GRE carries multicast/multiprotocol traffic; IPsec adds encryption and integrity',
+      },
+      { id: 'b', text: 'IPsec cannot route packets on its own' },
+      { id: 'c', text: 'GRE compresses the payload' },
+      { id: 'd', text: 'IPsec provides the tunnel interface' },
+    ],
+    correct: ['a'],
+    explanation:
+      'Native IPsec (tunnel mode) doesn’t carry multicast or routing protocols well. GRE encapsulates that traffic; IPsec then secures the GRE tunnel.',
+    reference: '350-401 ENCOR — GRE over IPsec',
+  }),
+  q({
+    id: 'np2-dmvpn',
+    domain: D.OVERLAY,
+    difficulty: 'Advanced',
+    prompt: 'Which two technologies underpin DMVPN’s dynamic spoke-to-spoke tunnels?',
+    choices: [
+      { id: 'a', text: 'Multipoint GRE (mGRE) and NHRP' },
+      { id: 'b', text: 'VXLAN and LISP' },
+      { id: 'c', text: 'MPLS and BGP' },
+      { id: 'd', text: '802.1Q and STP' },
+    ],
+    correct: ['a'],
+    explanation:
+      'DMVPN uses mGRE (one tunnel interface to many peers) plus NHRP (which maps tunnel IPs to physical NBMA addresses) so spokes can build direct tunnels on demand.',
+    reference: '350-401 ENCOR — DMVPN',
+  }),
+  q({
+    id: 'np2-nhrp',
+    domain: D.OVERLAY,
+    difficulty: 'Advanced',
+    prompt: 'In DMVPN, what does NHRP resolve?',
+    choices: [
+      {
+        id: 'a',
+        text: 'A tunnel (overlay) IP address to the peer’s physical NBMA (public) address',
+      },
+      { id: 'b', text: 'A hostname to an IP address' },
+      { id: 'c', text: 'A MAC address to an IP address' },
+      { id: 'd', text: 'A VLAN to an SVI' },
+    ],
+    correct: ['a'],
+    explanation:
+      'NHRP is like ARP for the overlay: spokes register with the hub and query it to learn a remote spoke’s real (NBMA) address so a direct tunnel can form.',
+    reference: '350-401 ENCOR — NHRP',
+  }),
+  q({
+    id: 'np2-lisp-eid',
+    domain: D.OVERLAY,
+    difficulty: 'Advanced',
+    prompt: 'In LISP, what is the difference between an EID and an RLOC?',
+    choices: [
+      {
+        id: 'a',
+        text: 'The EID identifies the endpoint; the RLOC is the router locator used to reach it',
+      },
+      { id: 'b', text: 'They are the same thing' },
+      { id: 'c', text: 'The EID is a MAC address; the RLOC is a VLAN' },
+      { id: 'd', text: 'The RLOC identifies the host; the EID is the transport' },
+    ],
+    correct: ['a'],
+    explanation:
+      'LISP separates identity from location: the Endpoint ID (EID) names the host/subnet, and the Routing Locator (RLOC) is the underlay address of the router reaching it. A mapping system ties them together.',
+    reference: '350-401 ENCOR — LISP',
+  }),
+  q({
+    id: 'np2-vtep',
+    domain: D.OVERLAY,
+    prompt: 'In a VXLAN fabric, what does a VTEP do?',
+    choices: [
+      { id: 'a', text: 'Encapsulates/decapsulates VXLAN (MAC-in-UDP) at the edge of the overlay' },
+      { id: 'b', text: 'Elects the spanning-tree root' },
+      { id: 'c', text: 'Assigns DHCP addresses' },
+      { id: 'd', text: 'Runs BGP best-path selection' },
+    ],
+    correct: ['a'],
+    explanation:
+      'A VXLAN Tunnel Endpoint (VTEP) wraps Ethernet frames in VXLAN/UDP toward remote VTEPs and unwraps them on arrival, extending Layer 2 over a Layer 3 underlay.',
+    reference: '350-401 ENCOR — VXLAN',
+  }),
+  q({
+    id: 'np2-sdaccess',
+    domain: D.OVERLAY,
+    difficulty: 'Advanced',
+    prompt: 'Which planes does Cisco SD-Access use for its fabric?',
+    choices: [
+      { id: 'a', text: 'VXLAN data plane, LISP control plane, and Cisco TrustSec for policy' },
+      { id: 'b', text: 'MPLS data plane and OSPF control plane' },
+      { id: 'c', text: 'GRE data plane and RIP control plane' },
+      { id: 'd', text: '802.1Q data plane and STP control plane' },
+    ],
+    correct: ['a'],
+    explanation:
+      'SD-Access forwards with VXLAN, uses LISP for the control/mapping plane, and enforces group-based policy with TrustSec (SGTs) — orchestrated by DNA Center.',
+    reference: '350-401 ENCOR — SD-Access',
+  }),
+  q({
+    id: 'np2-underlay',
+    domain: D.OVERLAY,
+    prompt: 'In a fabric, what is the "underlay"?',
+    choices: [
+      { id: 'a', text: 'The physical IP transport network that carries the overlay' },
+      { id: 'b', text: 'The logical VXLAN segments' },
+      { id: 'c', text: 'The policy/identity layer' },
+      { id: 'd', text: 'The management VLAN' },
+    ],
+    correct: ['a'],
+    explanation:
+      'The underlay is the physical/IP-routed network (often OSPF/IS-IS) that provides reachability between VTEPs; the overlay (VXLAN) rides on top of it.',
+    reference: '350-401 ENCOR — overlay/underlay',
+  }),
+  q({
+    id: 'np2-vrf-rd',
+    domain: D.OVERLAY,
+    difficulty: 'Advanced',
+    prompt: 'In MPLS L3VPN, what is the role of a Route Distinguisher (RD)?',
+    choices: [
+      { id: 'a', text: 'It makes otherwise-overlapping VPN prefixes unique in MP-BGP' },
+      { id: 'b', text: 'It encrypts customer routes' },
+      { id: 'c', text: 'It selects the BGP best path' },
+      { id: 'd', text: 'It assigns VLAN IDs' },
+    ],
+    correct: ['a'],
+    explanation:
+      'The RD is prepended to an IPv4 prefix to form a unique VPNv4 route, so customers with overlapping address space can coexist. Route Targets then control import/export.',
+    reference: '350-401 ENCOR — MPLS L3VPN',
+  }),
+
+  // --- Infrastructure Security ----------------------------------------
+  q({
+    id: 'np2-portsec-sticky',
+    domain: D.SECURITY,
+    prompt: 'What does `switchport port-security mac-address sticky` do?',
+    choices: [
+      { id: 'a', text: 'Dynamically learns the MAC and saves it into the running configuration' },
+      { id: 'b', text: 'Permanently err-disables the port' },
+      { id: 'c', text: 'Converts the port to a trunk' },
+      { id: 'd', text: 'Encrypts frames on the port' },
+    ],
+    correct: ['a'],
+    explanation:
+      'Sticky learning converts dynamically learned secure MACs into static entries in the running-config, so they survive without you typing each MAC.',
+    reference: '350-401 ENCOR — port security',
+  }),
+  q({
+    id: 'np2-portsec-restrict',
+    domain: D.SECURITY,
+    difficulty: 'Advanced',
+    prompt:
+      'Which port-security violation mode drops offending frames AND sends a syslog/SNMP notification, but does NOT shut the port?',
+    choices: [
+      { id: 'a', text: 'restrict' },
+      { id: 'b', text: 'protect' },
+      { id: 'c', text: 'shutdown' },
+      { id: 'd', text: 'disable' },
+    ],
+    correct: ['a'],
+    explanation:
+      'restrict drops and logs/increments a counter; protect drops silently; shutdown (the default) err-disables the port.',
+    reference: '350-401 ENCOR — port security',
+  }),
+  q({
+    id: 'np2-radius-ports',
+    domain: D.SECURITY,
+    prompt: 'Which UDP ports does RADIUS use for authentication and accounting?',
+    choices: [
+      { id: 'a', text: '1812 (auth) and 1813 (accounting)' },
+      { id: 'b', text: 'TCP 49 for both' },
+      { id: 'c', text: '161 and 162' },
+      { id: 'd', text: '443 and 80' },
+    ],
+    correct: ['a'],
+    explanation:
+      'RADIUS uses UDP 1812 (authentication/authorization, combined) and 1813 (accounting). TACACS+ uses TCP 49 and separates AAA.',
+    reference: '350-401 ENCOR — AAA',
+  }),
+  q({
+    id: 'np2-aaa-method',
+    domain: D.SECURITY,
+    difficulty: 'Advanced',
+    prompt:
+      'Why is a local method commonly listed LAST in an AAA method list (e.g. `aaa authentication login default group radius local`)?',
+    choices: [
+      { id: 'a', text: 'As a fallback if the RADIUS/TACACS+ servers are unreachable' },
+      { id: 'b', text: 'To force local login first' },
+      { id: 'c', text: 'To disable remote authentication' },
+      { id: 'd', text: 'To encrypt the login' },
+    ],
+    correct: ['a'],
+    explanation:
+      'Method lists are tried in order. Putting `local` last provides a fallback so you aren’t locked out when the AAA servers are down (methods are only tried if the previous is unreachable, not on an explicit reject).',
+    reference: '350-401 ENCOR — AAA method lists',
+  }),
+  q({
+    id: 'np2-dot1x',
+    domain: D.SECURITY,
+    prompt: 'In IEEE 802.1X, which device is the "supplicant"?',
+    choices: [
+      { id: 'a', text: 'The end host requesting network access' },
+      { id: 'b', text: 'The switch enforcing access' },
+      { id: 'c', text: 'The RADIUS server' },
+      { id: 'd', text: 'The default gateway' },
+    ],
+    correct: ['a'],
+    explanation:
+      '802.1X roles: the supplicant (client) requests access, the authenticator (switch) gates the port, and the authentication server (RADIUS) makes the decision.',
+    reference: '350-401 ENCOR — 802.1X',
+  }),
+  q({
+    id: 'np2-macsec',
+    domain: D.SECURITY,
+    difficulty: 'Advanced',
+    prompt: 'What does MACsec (802.1AE) provide?',
+    choices: [
+      {
+        id: 'a',
+        text: 'Hop-by-hop Layer 2 encryption/integrity between directly connected devices',
+      },
+      { id: 'b', text: 'End-to-end Layer 3 VPN encryption' },
+      { id: 'c', text: 'Password encryption in the config' },
+      { id: 'd', text: 'DHCP protection' },
+    ],
+    correct: ['a'],
+    explanation:
+      'MACsec encrypts and integrity-protects Ethernet frames on a link (wire-speed, hop-by-hop). IPsec, by contrast, secures at Layer 3 across routed networks.',
+    reference: '350-401 ENCOR — MACsec',
+  }),
+  q({
+    id: 'np2-cts-sgt',
+    domain: D.SECURITY,
+    difficulty: 'Advanced',
+    prompt: 'What is a Security Group Tag (SGT) in Cisco TrustSec?',
+    choices: [
+      {
+        id: 'a',
+        text: 'A tag assigned to traffic based on identity/role, used for group-based policy independent of IP',
+      },
+      { id: 'b', text: 'A VLAN identifier' },
+      { id: 'c', text: 'An MPLS label' },
+      { id: 'd', text: 'A spanning-tree priority' },
+    ],
+    correct: ['a'],
+    explanation:
+      'TrustSec classifies traffic with SGTs (by user/device role) and enforces SGACLs, decoupling policy from IP addresses/subnets.',
+    reference: '350-401 ENCOR — TrustSec',
+  }),
+  q({
+    id: 'np2-ssh-only',
+    domain: D.SECURITY,
+    prompt: 'Which vty configuration restricts remote management to SSH only (no Telnet)?',
+    choices: [
+      { id: 'a', text: 'transport input ssh' },
+      { id: 'b', text: 'transport input all' },
+      { id: 'c', text: 'transport input telnet' },
+      { id: 'd', text: 'no transport input' },
+    ],
+    correct: ['a'],
+    explanation:
+      '`transport input ssh` under `line vty` allows only SSH (encrypted) sessions and blocks clear-text Telnet — a basic device-hardening step.',
+    reference: '350-401 ENCOR — device hardening',
+  }),
+  q({
+    id: 'np2-snmp-acl',
+    domain: D.SECURITY,
+    prompt: 'How do you commonly restrict which hosts may query a device via SNMP?',
+    choices: [
+      { id: 'a', text: 'Apply an ACL to the SNMP community/group' },
+      { id: 'b', text: 'Disable CDP' },
+      { id: 'c', text: 'Shut down the vty lines' },
+      { id: 'd', text: 'Enable PortFast' },
+    ],
+    correct: ['a'],
+    explanation:
+      'Tying an access-list to the SNMP community (or v3 group) limits polling to trusted NMS hosts, reducing the attack surface of SNMP.',
+    reference: '350-401 ENCOR — SNMP security',
+  }),
+
+  // --- Automation & Programmability -----------------------------------
+  q({
+    id: 'np2-yang',
+    domain: D.AUTOMATION,
+    prompt: 'What is YANG?',
+    choices: [
+      {
+        id: 'a',
+        text: 'A data-modeling language that defines the structure used by NETCONF/RESTCONF',
+      },
+      { id: 'b', text: 'A transport protocol like SSH' },
+      { id: 'c', text: 'A Python web framework' },
+      { id: 'd', text: 'A routing protocol' },
+    ],
+    correct: ['a'],
+    explanation:
+      'YANG models the configuration/operational data (the schema). NETCONF and RESTCONF are the protocols that carry that YANG-modeled data as XML/JSON.',
+    reference: '350-401 ENCOR — YANG',
+  }),
+  q({
+    id: 'np2-json-array',
+    domain: D.AUTOMATION,
+    difficulty: 'Beginner',
+    prompt: 'In JSON, which characters denote an ARRAY (ordered list)?',
+    choices: [
+      { id: 'a', text: 'Square brackets [ ]' },
+      { id: 'b', text: 'Curly braces { }' },
+      { id: 'c', text: 'Parentheses ( )' },
+      { id: 'd', text: 'Angle brackets < >' },
+    ],
+    correct: ['a'],
+    explanation:
+      'JSON arrays use [ ] with comma-separated, ordered values; objects use { } with "key": value pairs.',
+    reference: '350-401 ENCOR — JSON',
+  }),
+  q({
+    id: 'np2-rest-verbs',
+    domain: D.AUTOMATION,
+    prompt: 'In a REST API, which HTTP method retrieves data without changing it?',
+    choices: [
+      { id: 'a', text: 'GET' },
+      { id: 'b', text: 'POST' },
+      { id: 'c', text: 'DELETE' },
+      { id: 'd', text: 'PUT' },
+    ],
+    correct: ['a'],
+    explanation:
+      'GET reads a resource. POST creates, PUT replaces, PATCH partially updates, and DELETE removes. RESTCONF maps these onto YANG data.',
+    reference: '350-401 ENCOR — REST',
+  }),
+  q({
+    id: 'np2-idempotent',
+    domain: D.AUTOMATION,
+    difficulty: 'Advanced',
+    prompt: 'What does it mean that an Ansible task is "idempotent"?',
+    choices: [
+      { id: 'a', text: 'Running it repeatedly yields the same end state without unwanted changes' },
+      { id: 'b', text: 'It always makes a change every run' },
+      { id: 'c', text: 'It requires an agent on the device' },
+      { id: 'd', text: 'It can only run once' },
+    ],
+    correct: ['a'],
+    explanation:
+      'Idempotency means the task drives toward a desired state: if the device already matches, nothing changes. This makes automation safe to re-run.',
+    reference: '350-401 ENCOR — automation concepts',
+  }),
+  q({
+    id: 'np2-ncclient',
+    domain: D.AUTOMATION,
+    prompt: 'Which Python library is commonly used to script NETCONF sessions?',
+    choices: [
+      { id: 'a', text: 'ncclient' },
+      { id: 'b', text: 'Netmiko' },
+      { id: 'c', text: 'requests' },
+      { id: 'd', text: 'pandas' },
+    ],
+    correct: ['a'],
+    explanation:
+      'ncclient speaks NETCONF (over SSH/830) with YANG data. Netmiko drives the CLI over SSH; requests is used for REST/RESTCONF over HTTP.',
+    reference: '350-401 ENCOR — Python libraries',
+  }),
+  q({
+    id: 'np2-restconf-port',
+    domain: D.AUTOMATION,
+    prompt: 'RESTCONF typically runs over which transport?',
+    choices: [
+      { id: 'a', text: 'HTTPS (TCP 443)' },
+      { id: 'b', text: 'SSH (TCP 830)' },
+      { id: 'c', text: 'UDP 161' },
+      { id: 'd', text: 'Telnet (TCP 23)' },
+    ],
+    correct: ['a'],
+    explanation:
+      'RESTCONF uses HTTP(S) — commonly HTTPS on 443 — with JSON or XML payloads. NETCONF uses SSH on 830.',
+    reference: '350-401 ENCOR — RESTCONF',
+  }),
+  q({
+    id: 'np2-python-dict',
+    domain: D.AUTOMATION,
+    difficulty: 'Beginner',
+    prompt:
+      'In Python, which built-in type stores key/value pairs (and maps cleanly to a JSON object)?',
+    choices: [
+      { id: 'a', text: 'dict' },
+      { id: 'b', text: 'list' },
+      { id: 'c', text: 'tuple' },
+      { id: 'd', text: 'set' },
+    ],
+    correct: ['a'],
+    explanation:
+      'A Python dict ({"key": value}) maps directly to a JSON object; a list ([...]) maps to a JSON array. json.loads()/dumps() convert between them.',
+    reference: '350-401 ENCOR — Python data types',
+  }),
+  q({
+    id: 'np2-telemetry',
+    domain: D.AUTOMATION,
+    difficulty: 'Advanced',
+    prompt: 'How does model-driven (streaming) telemetry differ from traditional SNMP polling?',
+    choices: [
+      {
+        id: 'a',
+        text: 'The device pushes data continuously to a collector, instead of being polled',
+      },
+      { id: 'b', text: 'It uses clear-text community strings' },
+      { id: 'c', text: 'It only works over Telnet' },
+      { id: 'd', text: 'It cannot use YANG models' },
+    ],
+    correct: ['a'],
+    explanation:
+      'Streaming telemetry has the device push YANG-modeled data (on change or interval) to a collector, giving fresher, more scalable monitoring than SNMP’s pull model.',
+    reference: '350-401 ENCOR — telemetry',
+  }),
+  q({
+    id: 'np2-http-200',
+    domain: D.AUTOMATION,
+    difficulty: 'Beginner',
+    prompt: 'A REST call returns HTTP status code 200. What does it mean?',
+    choices: [
+      { id: 'a', text: 'Success (OK)' },
+      { id: 'b', text: 'Unauthorized' },
+      { id: 'c', text: 'Not found' },
+      { id: 'd', text: 'Server error' },
+    ],
+    correct: ['a'],
+    explanation:
+      '2xx codes mean success (200 OK, 201 Created). 401 is unauthorized, 404 not found, and 5xx are server errors.',
+    reference: '350-401 ENCOR — HTTP status codes',
+  }),
 ]);
