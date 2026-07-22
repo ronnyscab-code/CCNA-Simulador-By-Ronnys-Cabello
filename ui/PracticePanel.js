@@ -13,6 +13,7 @@
 
 import { ScenarioEngine } from '../scenarios/ScenarioEngine.js';
 import { allPracticeQuestions } from '../labs/practiceQuestions.js';
+import { buildValidationReport } from '../scenarios/diagnostics.js';
 import { LabHud } from './LabHud.js';
 
 export class PracticePanel {
@@ -315,9 +316,15 @@ export class PracticePanel {
     const actions = [];
     if (q.checks && q.checks.length > 0) {
       actions.push({
-        label: 'Comprobar red',
+        label: '▶ Validar',
         primary: true,
-        onClick: () => this.hud.setStatus(hudStatus(this.scenarioEngine.evaluate())),
+        onClick: () => {
+          const { status, findings } = buildValidationReport(
+            this.scenarioEngine.evaluate(),
+            this.scenarioEngine.topology,
+          );
+          this.hud.setReport(status, findings);
+        },
       });
     }
     actions.push({ label: 'Responder', onClick: () => this._openQuestion(q.id) });
@@ -369,11 +376,3 @@ function escapeHtml(str) {
  * @param {{passedAll: boolean, score: number, maxScore: number}} result
  * @returns {{ok: boolean, text: string}}
  */
-function hudStatus(result) {
-  return {
-    ok: result.passedAll,
-    text: result.passedAll
-      ? '✔ ¡Red correcta! Objetivo cumplido.'
-      : `Objetivos: ${result.score}/${result.maxScore} — sigue configurando`,
-  };
-}

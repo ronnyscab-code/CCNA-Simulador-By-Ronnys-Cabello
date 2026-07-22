@@ -1136,6 +1136,39 @@
   color: var(--color-text);
 }
 
+.practice-hud-findings {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.practice-hud-finding {
+  font-size: var(--font-size-sm);
+  line-height: 1.35;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-border);
+  background: var(--color-surface-alt);
+}
+
+.practice-hud-finding.ok {
+  border-left-color: var(--color-success);
+  color: var(--color-text-muted);
+}
+
+.practice-hud-finding.warn {
+  border-left-color: #e0a400;
+}
+
+.practice-hud-finding.error {
+  border-left-color: var(--color-danger);
+}
+
 @media (max-width: 820px) {
   .practice-hud {
     top: auto;

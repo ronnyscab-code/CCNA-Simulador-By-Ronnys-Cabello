@@ -12,6 +12,7 @@
 
 import { ScenarioEngine } from '../scenarios/ScenarioEngine.js';
 import { allScenarios } from '../labs/scenarios.js';
+import { buildValidationReport } from '../scenarios/diagnostics.js';
 import { LabHud } from './LabHud.js';
 
 export class ScenarioPanel {
@@ -78,9 +79,15 @@ export class ScenarioPanel {
       hintHtml: scenario.description ? escapeHtml(scenario.description) : null,
       actions: [
         {
-          label: 'Comprobar',
+          label: '▶ Validar',
           primary: true,
-          onClick: () => this.hud.setStatus(hudStatus(this.scenarioEngine.evaluate())),
+          onClick: () => {
+            const { status, findings } = buildValidationReport(
+              this.scenarioEngine.evaluate(),
+              this.scenarioEngine.topology,
+            );
+            this.hud.setReport(status, findings);
+          },
         },
         { label: 'Reiniciar', onClick: () => this.loadScenario(this.activeId) },
         {
@@ -262,18 +269,4 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
-}
-
-/**
- * Turns a ScenarioEngine result into the objective card's live status line.
- * @param {{passedAll: boolean, score: number, maxScore: number}} result
- * @returns {{ok: boolean, text: string}}
- */
-function hudStatus(result) {
-  return {
-    ok: result.passedAll,
-    text: result.passedAll
-      ? '✔ ¡Resuelto! Objetivo cumplido.'
-      : `Objetivos: ${result.score}/${result.maxScore} — sigue configurando`,
-  };
 }

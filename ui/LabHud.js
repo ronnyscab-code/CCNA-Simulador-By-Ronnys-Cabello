@@ -53,6 +53,19 @@ export class LabHud {
     this._render();
   }
 
+  /**
+   * Shows a validation report: a status line plus a list of findings
+   * (objectives and likely faults), each a `{level, text}`.
+   * @param {{ok: boolean, text: string}|null} status
+   * @param {Array<{level: 'ok'|'warn'|'error', text: string}>} [findings]
+   */
+  setReport(status, findings = []) {
+    if (!this.config) return;
+    this.config.status = status;
+    this.config.findings = findings;
+    this._render();
+  }
+
   /** Removes the card from the screen. */
   hide() {
     if (this.el) {
@@ -124,6 +137,17 @@ export class LabHud {
       const status = h('div', `practice-hud-status ${c.status.ok ? 'ok' : 'fail'}`);
       status.textContent = c.status.text;
       this.el.appendChild(status);
+    }
+
+    if (c.findings && c.findings.length > 0) {
+      const list = h('ul', 'practice-hud-findings');
+      for (const f of c.findings) {
+        const li = h('li', `practice-hud-finding ${f.level}`);
+        const icon = f.level === 'ok' ? '✔' : f.level === 'error' ? '✘' : '⚠';
+        li.textContent = `${icon} ${f.text}`;
+        list.appendChild(li);
+      }
+      this.el.appendChild(list);
     }
   }
 }
