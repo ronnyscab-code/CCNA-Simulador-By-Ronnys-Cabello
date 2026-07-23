@@ -15,6 +15,11 @@ The logical device layer. Pure data + behavior, no DOM.
   device types with default interface layouts.
 - `DeviceFactory.js` — the one registry mapping a type key to its class,
   used for both creation and deserialization.
+- `models.js` — catalog of selectable hardware models (2960/3560/2901/4331…),
+  each one a named interface layout.
+- `frontPanel.js` — turns a device's interfaces into chassis geometry (port
+  squares grouped by family, numbered top/bottom like the real silk screen)
+  so the canvas can draw and cable a real front panel.
 
 A topology `Node` (`../topology/Node.js`) owns one `Device`. The CLI (v0.3)
 and packet engine (v0.4+) program against `Device`/`NetworkInterface`, never

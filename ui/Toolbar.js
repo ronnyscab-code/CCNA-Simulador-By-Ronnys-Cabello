@@ -77,6 +77,9 @@ export class Toolbar {
       'zoom-reset': () => this.canvasManager.zoomResetView(),
       'toggle-grid': () => this.canvasManager.toggleGrid(),
       'toggle-snap': () => this.canvasManager.toggleSnap(),
+      'toggle-chassis': () => this.canvasManager.toggleChassis(),
+      'toggle-zones': () => this.canvasManager.toggleZones(),
+      'toggle-telemetry': () => this.canvasManager.toggleTelemetry(),
       'new-project': () => this._newProject(),
       'save-project': () => this._saveProject(),
       'load-project': () => this._loadProjectPrompt(),
@@ -105,6 +108,13 @@ export class Toolbar {
     this.el
       .querySelector('[data-action="toggle-snap"]')
       .setAttribute('aria-pressed', String(this.canvasManager.snapEnabled));
+    for (const [action, on] of [
+      ['toggle-chassis', this.canvasManager.chassisMode],
+      ['toggle-zones', this.canvasManager.zonesVisible],
+      ['toggle-telemetry', this.canvasManager.telemetryVisible],
+    ]) {
+      this.el.querySelector(`[data-action="${action}"]`)?.setAttribute('aria-pressed', String(on));
+    }
     this.statusMode.textContent = this.canvasManager.connectMode ? 'Connect mode' : 'Select mode';
   }
 

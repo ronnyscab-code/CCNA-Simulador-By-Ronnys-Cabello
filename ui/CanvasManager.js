@@ -32,9 +32,14 @@ import {
   updateWorldTransform,
   renderNodes,
   renderEdges,
+  renderZones,
   renderPendingEdge,
   renderSelectionBox,
 } from './CanvasRenderer.js';
+import { frontPanelLayout } from '../devices/frontPanel.js';
+import { modelLabel } from '../devices/models.js';
+import { computeZones } from '../topology/segments.js';
+import { linkStates, shortPort } from '../engine/telemetry.js';
 
 export class CanvasManager extends EventTarget {
   /**
@@ -57,6 +62,12 @@ export class CanvasManager extends EventTarget {
 
     this.gridVisible = true;
     this.snapEnabled = true;
+    // Canvas view modes. Chassis draws devices as their real front panel,
+    // zones outline each broadcast domain, telemetry colours cables by their
+    // live state and labels each end with its interface.
+    this.chassisMode = false;
+    this.zonesVisible = false;
+    this.telemetryVisible = false;
     this.connectMode = false;
     this.connectSourceId = null;
     this.pendingEdgeToPoint = null;
@@ -95,15 +106,72 @@ export class CanvasManager extends EventTarget {
 
     const nodes = this.topology.getNodes();
     const nodesById = new Map(nodes.map((n) => [n.id, n]));
+    const view = this.viewState(nodes);
 
-    renderNodes(this.refs, nodes, this.selection.selectedNodeIds, this.connectSourceId);
-    renderEdges(this.refs, this.topology.getEdges(), nodesById, this.selection.selectedEdgeIds);
+    renderZones(this.refs, view.zoneList, nodesById, view);
+    renderNodes(this.refs, nodes, this.selection.selectedNodeIds, this.connectSourceId, view);
+    renderEdges(
+      this.refs,
+      this.topology.getEdges(),
+      nodesById,
+      this.selection.selectedEdgeIds,
+      view,
+    );
 
     const sourceNode = this.connectSourceId ? this.topology.getNode(this.connectSourceId) : null;
     renderPendingEdge(this.refs, sourceNode, this.pendingEdgeToPoint);
     renderSelectionBox(this.refs, this.selectionBoxScreen);
 
     this.dispatchEvent(new CustomEvent('viewChange'));
+  }
+
+  /**
+   * Gathers everything the renderers need that isn't raw topology: chassis
+   * geometry, subnet zones, and per-cable/per-port live state. Computed once
+   * per render so the three renderer calls stay in agreement — a cable and
+   * the port it lands on must never disagree about where they are.
+   * @param {import('../topology/Node.js').Node[]} nodes
+   * @returns {object}
+   */
+  viewState(nodes) {
+    const view = {
+      chassis: this.chassisMode,
+      zones: this.zonesVisible,
+      telemetry: this.telemetryVisible,
+      portLabels: this.telemetryVisible,
+      shortPort,
+      layouts: new Map(),
+      modelLabels: new Map(),
+      linkLevels: new Map(),
+      linkReasons: new Map(),
+      portLevels: new Map(),
+      zoneList: [],
+    };
+
+    if (this.chassisMode) {
+      for (const node of nodes) {
+        if (!node.device) continue;
+        view.layouts.set(node.id, frontPanelLayout(node.device));
+        const label = modelLabel(node.deviceType, node.device.model);
+        if (label) view.modelLabels.set(node.id, label);
+      }
+    }
+
+    // Port lights need link state even when the cables aren't colour-coded,
+    // otherwise a chassis would show every boca as free.
+    if (this.chassisMode || this.telemetryVisible) {
+      for (const link of linkStates(this.topology)) {
+        view.linkLevels.set(link.edgeId, link.level);
+        if (link.reason) view.linkReasons.set(link.edgeId, link.reason);
+        view.portLevels.set(`${link.a.nodeId}|${link.a.port}`, link.level);
+        view.portLevels.set(`${link.b.nodeId}|${link.b.port}`, link.level);
+      }
+      if (!this.telemetryVisible) view.linkLevels.clear();
+    }
+
+    if (this.zonesVisible) view.zoneList = computeZones(this.topology);
+
+    return view;
   }
 
   // --- Coordinate helpers ------------------------------------------------
@@ -292,6 +360,21 @@ export class CanvasManager extends EventTarget {
   toggleSnap() {
     this.snapEnabled = !this.snapEnabled;
     this.dispatchEvent(new CustomEvent('viewChange'));
+  }
+
+  toggleChassis() {
+    this.chassisMode = !this.chassisMode;
+    this.render();
+  }
+
+  toggleZones() {
+    this.zonesVisible = !this.zonesVisible;
+    this.render();
+  }
+
+  toggleTelemetry() {
+    this.telemetryVisible = !this.telemetryVisible;
+    this.render();
   }
 
   zoomIn() {

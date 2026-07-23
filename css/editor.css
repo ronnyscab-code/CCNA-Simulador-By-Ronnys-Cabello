@@ -1354,3 +1354,203 @@
   color: var(--color-text);
   overflow-x: auto;
 }
+
+/* --- Canvas view modes: chassis, zones, telemetry ---------------------- */
+
+/* Front panel: each device drawn as its real chassis with its own ports. */
+.chassis-plate {
+  fill: var(--color-node-fill);
+  stroke: var(--color-node-border);
+  stroke-width: 1;
+}
+
+.topology-node.selected .chassis-plate {
+  stroke: var(--color-node-selected);
+  stroke-width: 2;
+}
+
+.chassis-name {
+  font-family: var(--font-family-mono);
+  font-size: 10px;
+  fill: var(--color-text);
+  pointer-events: none;
+}
+
+.chassis-model,
+.chassis-caption {
+  font-family: var(--font-family-mono);
+  font-size: 8.5px;
+  fill: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.chassis-port {
+  fill: var(--color-canvas-bg);
+  stroke: var(--color-node-border);
+  stroke-width: 1;
+}
+
+.chassis-port.port-ok {
+  stroke: var(--color-success);
+}
+.chassis-port.port-warn {
+  stroke: var(--color-warning);
+}
+.chassis-port.port-down {
+  stroke: var(--color-danger);
+}
+
+/* Zones: one region per broadcast domain, drawn behind everything. */
+.zone-box {
+  fill: rgba(79, 157, 255, 0.07);
+  stroke: var(--color-accent);
+  stroke-width: 1;
+  stroke-dasharray: 5 4;
+}
+
+.topology-zone.zone-warn .zone-box {
+  fill: rgba(245, 181, 68, 0.08);
+  stroke: var(--color-warning);
+}
+
+.zone-label {
+  font-family: var(--font-family-mono);
+  font-size: 10px;
+  fill: var(--color-accent);
+  pointer-events: none;
+}
+
+.topology-zone.zone-warn .zone-label {
+  fill: var(--color-warning);
+}
+
+/* Telemetry: cables coloured by live state, ends labelled with the port. */
+.topology-edge.link-ok {
+  stroke: var(--color-success);
+}
+.topology-edge.link-warn {
+  stroke: var(--color-warning);
+  stroke-dasharray: 7 5;
+}
+.topology-edge.link-down {
+  stroke: var(--color-danger);
+  stroke-dasharray: 4 4;
+}
+
+.edge-port-label {
+  font-family: var(--font-family-mono);
+  font-size: 9px;
+  fill: var(--color-text-muted);
+  pointer-events: none;
+}
+
+/* Live-state rail floating over the canvas. */
+/* Bottom-left: the objective HUD owns the top-right corner of the canvas. */
+.telemetry-rail {
+  position: absolute;
+  bottom: var(--space-3);
+  left: var(--space-3);
+  width: 210px;
+  max-height: calc(100% - var(--space-5));
+  overflow-y: auto;
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  z-index: 4;
+}
+
+.telemetry-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.telemetry-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.telemetry-stat-value {
+  font-family: var(--font-family-mono);
+  font-size: 15px;
+  color: var(--color-text);
+}
+
+.telemetry-stat.warn .telemetry-stat-value {
+  color: var(--color-warning);
+}
+.telemetry-stat.down .telemetry-stat-value {
+  color: var(--color-danger);
+}
+
+.telemetry-stat-label {
+  font-size: 9px;
+  color: var(--color-text-muted);
+}
+
+.telemetry-section {
+  margin: var(--space-3) 0 var(--space-2);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.telemetry-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.telemetry-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.telemetry-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--color-danger);
+}
+
+.telemetry-dot.up {
+  background: var(--color-success);
+}
+
+.telemetry-key {
+  font-family: var(--font-family-mono);
+  font-size: 11px;
+  color: var(--color-text);
+  flex: none;
+}
+
+.telemetry-value {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-left: auto;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.telemetry-value.mono {
+  font-family: var(--font-family-mono);
+  font-size: 10px;
+}
+
+.telemetry-hint {
+  margin: var(--space-2) 0 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}

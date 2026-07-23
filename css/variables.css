@@ -23,6 +23,7 @@
   --color-accent-muted: rgba(79, 157, 255, 0.15);
   --color-danger: #ff5c6c;
   --color-success: #3ecf8e;
+  --color-warning: #f5b544;
 
   /* Node / edge */
   --color-node-fill: #2f313d;

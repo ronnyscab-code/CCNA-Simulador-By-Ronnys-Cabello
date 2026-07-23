@@ -12,6 +12,7 @@
  */
 
 import { getDeviceMeta } from './DeviceIcons.js';
+import { portAnchor } from '../devices/frontPanel.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 export const GRID_SIZE = 24;
@@ -71,10 +72,11 @@ export function buildCanvasLayers(svgRoot) {
   });
 
   const worldGroup = createSvgElement('g', { class: 'world-group' });
+  const zonesLayer = createSvgElement('g', { class: 'zones-layer' });
   const edgesLayer = createSvgElement('g', { class: 'edges-layer' });
   const nodesLayer = createSvgElement('g', { class: 'nodes-layer' });
   const pendingEdgeLayer = createSvgElement('g', { class: 'pending-edge-layer' });
-  worldGroup.append(edgesLayer, nodesLayer, pendingEdgeLayer);
+  worldGroup.append(zonesLayer, edgesLayer, nodesLayer, pendingEdgeLayer);
 
   const selectionBoxRect = createSvgElement('rect', {
     class: 'selection-box',
@@ -93,6 +95,7 @@ export function buildCanvasLayers(svgRoot) {
     gridPattern,
     gridRect,
     worldGroup,
+    zonesLayer,
     edgesLayer,
     nodesLayer,
     pendingEdgeLayer,
@@ -124,8 +127,9 @@ export function updateWorldTransform(refs, camera) {
  * @param {import('../topology/Node.js').Node[]} nodes
  * @param {Set<string>} selectedNodeIds
  * @param {string|null} connectSourceId
+ * @param {object} [view] - See `CanvasManager.viewState()`.
  */
-export function renderNodes(refs, nodes, selectedNodeIds, connectSourceId) {
+export function renderNodes(refs, nodes, selectedNodeIds, connectSourceId, view = {}) {
   clearElement(refs.nodesLayer);
 
   for (const node of nodes) {
@@ -137,6 +141,13 @@ export function renderNodes(refs, nodes, selectedNodeIds, connectSourceId) {
     });
     if (selectedNodeIds.has(node.id)) group.classList.add('selected');
     if (connectSourceId === node.id) group.classList.add('connect-source');
+
+    const layout = view.chassis ? view.layouts?.get(node.id) : null;
+    if (layout) {
+      renderChassis(group, node, layout, view);
+      refs.nodesLayer.appendChild(group);
+      continue;
+    }
 
     const halfW = node.width / 2;
     const halfH = node.height / 2;
@@ -182,18 +193,169 @@ export function renderNodes(refs, nodes, selectedNodeIds, connectSourceId) {
 }
 
 /**
+ * Draws one device as its front panel: a chassis plate with a name band and
+ * one square per interface, lit by that port's live state. Coordinates come
+ * from `devices/frontPanel.js`, which lays the ports out the way the model's
+ * real silk screen numbers them.
+ * @param {SVGElement} group
+ * @param {import('../topology/Node.js').Node} node
+ * @param {object} layout
+ * @param {object} view
+ */
+function renderChassis(group, node, layout, view) {
+  group.classList.add('chassis-node');
+  const halfW = layout.width / 2;
+  const halfH = layout.height / 2;
+
+  const hitArea = createSvgElement('rect', {
+    class: 'node-hit-area',
+    x: -halfW - 4,
+    y: -halfH - 4,
+    width: layout.width + 8,
+    height: layout.height + 8,
+  });
+
+  const plate = createSvgElement('rect', {
+    class: 'chassis-plate',
+    x: -halfW,
+    y: -halfH,
+    width: layout.width,
+    height: layout.height,
+    rx: 7,
+  });
+
+  const name = createSvgElement('text', {
+    class: 'chassis-name',
+    x: -halfW + 8,
+    y: -halfH + 11,
+  });
+  name.textContent = node.hostname;
+
+  group.append(hitArea, plate, name);
+
+  const modelLabel = view.modelLabels?.get(node.id);
+  if (modelLabel) {
+    const model = createSvgElement('text', {
+      class: 'chassis-model',
+      x: halfW - 8,
+      y: -halfH + 11,
+      'text-anchor': 'end',
+    });
+    model.textContent = modelLabel;
+    group.appendChild(model);
+  }
+
+  for (const port of layout.ports) {
+    const level = view.portLevels?.get(`${node.id}|${port.name}`) ?? null;
+    const square = createSvgElement('rect', {
+      class: `chassis-port${level ? ` port-${level}` : ''}`,
+      x: -halfW + port.x,
+      y: -halfH + port.y,
+      width: port.size,
+      height: port.size,
+      rx: 2,
+    });
+    const tooltip = createSvgElement('title');
+    tooltip.textContent = level ? `${port.name} — ${level}` : `${port.name} — libre`;
+    square.appendChild(tooltip);
+    group.appendChild(square);
+  }
+
+  for (const band of layout.groups) {
+    const caption = createSvgElement('text', {
+      class: 'chassis-caption',
+      x: -halfW + band.x,
+      y: -halfH + band.y,
+    });
+    caption.textContent = band.label;
+    group.appendChild(caption);
+  }
+}
+
+/**
+ * Draws the subnet/VLAN regions behind everything else: one rounded box per
+ * broadcast domain, sized to its members and labelled with its CIDR.
+ * @param {object} refs
+ * @param {Array<object>} zones
+ * @param {Map<string, import('../topology/Node.js').Node>} nodesById
+ * @param {object} view
+ */
+export function renderZones(refs, zones, nodesById, view = {}) {
+  clearElement(refs.zonesLayer);
+  if (!view.zones) return;
+
+  const PAD = 30;
+  for (const zone of zones) {
+    const members = zone.nodeIds.map((id) => nodesById.get(id)).filter(Boolean);
+    if (members.length === 0) continue;
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const node of members) {
+      const layout = view.chassis ? view.layouts?.get(node.id) : null;
+      const halfW = (layout?.width ?? node.width) / 2;
+      const halfH = (layout?.height ?? node.height) / 2;
+      minX = Math.min(minX, node.x - halfW);
+      minY = Math.min(minY, node.y - halfH);
+      maxX = Math.max(maxX, node.x + halfW);
+      maxY = Math.max(maxY, node.y + halfH);
+    }
+
+    const group = createSvgElement('g', {
+      class: `topology-zone zone-${zone.level}`,
+      'data-zone-id': zone.id,
+    });
+
+    // The box must never be narrower than its own caption, or the CIDR spills
+    // out over the canvas. Monospace at 10px is very close to 6px per glyph.
+    const text = zone.note ? `${zone.label}  ⚠` : zone.label;
+    const width = Math.max(maxX - minX + PAD * 2, text.length * 6 + 26);
+
+    const box = createSvgElement('rect', {
+      class: 'zone-box',
+      x: minX - PAD,
+      y: minY - PAD,
+      width,
+      height: maxY - minY + PAD * 2 + 8,
+      rx: 14,
+    });
+    const label = createSvgElement('text', {
+      class: 'zone-label',
+      x: minX - PAD + 12,
+      y: minY - PAD + 17,
+    });
+    label.textContent = text;
+
+    const tooltip = createSvgElement('title');
+    tooltip.textContent = zone.note ?? `Puerta de enlace: ${zone.gateway ?? 'ninguna'}`;
+    box.appendChild(tooltip);
+
+    group.append(box, label);
+    refs.zonesLayer.appendChild(group);
+  }
+}
+
+/**
  * @param {object} refs
  * @param {import('../topology/Edge.js').Edge[]} edges
  * @param {Map<string, import('../topology/Node.js').Node>} nodesById
  * @param {Set<string>} selectedEdgeIds
  */
-export function renderEdges(refs, edges, nodesById, selectedEdgeIds) {
+export function renderEdges(refs, edges, nodesById, selectedEdgeIds, view = {}) {
   clearElement(refs.edgesLayer);
 
   for (const edge of edges) {
     const source = nodesById.get(edge.sourceNodeId);
     const target = nodesById.get(edge.targetNodeId);
     if (!source || !target) continue;
+
+    // In chassis mode a cable lands on the port it is actually patched into,
+    // not on the middle of the device.
+    const from = anchorFor(source, edge.sourcePort, view);
+    const to = anchorFor(target, edge.targetPort, view);
+    const level = view.linkLevels?.get(edge.id) ?? null;
 
     const group = createSvgElement('g', {
       class: 'topology-edge-group',
@@ -202,24 +364,77 @@ export function renderEdges(refs, edges, nodesById, selectedEdgeIds) {
 
     const hitLine = createSvgElement('line', {
       class: 'topology-edge-hit',
-      x1: source.x,
-      y1: source.y,
-      x2: target.x,
-      y2: target.y,
+      x1: from.x,
+      y1: from.y,
+      x2: to.x,
+      y2: to.y,
     });
 
     const visibleLine = createSvgElement('line', {
-      class: 'topology-edge',
-      x1: source.x,
-      y1: source.y,
-      x2: target.x,
-      y2: target.y,
+      class: `topology-edge${level ? ` link-${level}` : ''}`,
+      x1: from.x,
+      y1: from.y,
+      x2: to.x,
+      y2: to.y,
     });
     if (selectedEdgeIds.has(edge.id)) visibleLine.classList.add('selected');
 
+    const reason = view.linkReasons?.get(edge.id);
+    if (reason) {
+      const tooltip = createSvgElement('title');
+      tooltip.textContent = reason;
+      hitLine.appendChild(tooltip);
+    }
+
     group.append(hitLine, visibleLine);
+
+    if (view.portLabels) {
+      group.append(
+        portLabel(from, to, edge.sourcePort, view),
+        portLabel(to, from, edge.targetPort, view),
+      );
+    }
+
     refs.edgesLayer.appendChild(group);
   }
+}
+
+/**
+ * Where a cable meets a device: the port square in chassis mode, the node
+ * centre otherwise.
+ * @param {import('../topology/Node.js').Node} node
+ * @param {string} portName
+ * @param {object} view
+ * @returns {{x: number, y: number}}
+ */
+function anchorFor(node, portName, view) {
+  const layout = view.chassis ? view.layouts?.get(node.id) : null;
+  if (!layout) return { x: node.x, y: node.y };
+  return portAnchor(node, layout, portName);
+}
+
+/**
+ * A small interface name floated just off the device end of a cable.
+ * @param {{x: number, y: number}} at - the end being labelled.
+ * @param {{x: number, y: number}} towards - the far end, giving the direction.
+ * @param {string} portName
+ * @param {object} view
+ * @returns {SVGElement}
+ */
+function portLabel(at, towards, portName, view) {
+  const dx = towards.x - at.x;
+  const dy = towards.y - at.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const offset = 26;
+
+  const text = createSvgElement('text', {
+    class: 'edge-port-label',
+    x: at.x + (dx / length) * offset,
+    y: at.y + (dy / length) * offset - 5,
+    'text-anchor': 'middle',
+  });
+  text.textContent = view.shortPort ? view.shortPort(portName) : portName;
+  return text;
 }
 
 /**

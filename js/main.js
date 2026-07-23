@@ -25,6 +25,7 @@ import { PracticePanel } from '../ui/PracticePanel.js';
 import { TerminalManager } from '../ui/TerminalManager.js';
 import { PacketEngine } from '../engine/PacketEngine.js';
 import { PacketAnimator } from '../ui/PacketAnimator.js';
+import { TelemetryRail } from '../ui/TelemetryRail.js';
 
 const AUTOSAVE_TOPOLOGY_EVENTS = [
   'nodeAdded',
@@ -57,6 +58,18 @@ function bootstrap() {
   const packetEngine = new PacketEngine(topology);
   const packetAnimator = new PacketAnimator({ container, topology, camera });
 
+  // The live-state rail tracks whichever device is selected, and refreshes on
+  // every canvas render so learned tables appear as soon as a ping resolves.
+  const telemetryRail = new TelemetryRail({ container, topology, engine: packetEngine });
+  canvasManager.addEventListener('viewChange', () => {
+    telemetryRail.setVisible(canvasManager.telemetryVisible);
+    telemetryRail.refresh();
+  });
+  selection.addEventListener('change', () => {
+    const [nodeId] = selection.getSelectedNodeIds();
+    telemetryRail.setFocus(nodeId ?? null);
+  });
+
   // Cabling/addressing changes invalidate cached ARP entries — clear them so
   // pings re-resolve against the current topology.
   for (const eventName of ['edgeAdded', 'edgeRemoved', 'nodeRemoved', 'loaded', 'cleared']) {
@@ -67,7 +80,12 @@ function bootstrap() {
     topology,
     layer: document.getElementById('terminal-layer'),
     packetEngine,
-    onPackets: (events) => packetAnimator.play(events),
+    onPackets: (events) => {
+      packetAnimator.play(events);
+      // Traffic is what fills the ARP and MAC tables, and it never triggers a
+      // canvas render — so the rail has to be told the moment packets fly.
+      telemetryRail.refresh();
+    },
   });
 
   const contextMenu = new ContextMenu(document.getElementById('context-menu'));
