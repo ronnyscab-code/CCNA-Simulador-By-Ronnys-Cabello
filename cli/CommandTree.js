@@ -21,6 +21,8 @@ class CommandNode {
   constructor() {
     /** @type {Map<string, CommandNode>} literal keyword → child */
     this.literals = new Map();
+    /** @type {Set<string>} keywords in `literals` that are aliases of another */
+    this.aliasKeys = new Set();
     /** @type {{ name: string, rest: boolean, node: CommandNode }|null} */
     this.param = null;
     /** @type {Function|null} */
@@ -90,6 +92,26 @@ export class CommandTree {
   }
 
   /**
+   * Registers `alias` as an alternate spelling of an existing keyword under
+   * the same parent, sharing the very same node. IOS does this for a handful
+   * of keywords — `show interface` and `show interfaces` are one command, so
+   * `sh int status` must resolve rather than come back ambiguous.
+   *
+   * The alias is hidden from `?`/Tab so help output still shows one spelling.
+   * @param {string} path - the canonical keyword path, e.g. "show interfaces".
+   * @param {string} alias - the alternate final keyword, e.g. "interface".
+   */
+  alias(path, alias) {
+    const tokens = path.trim().split(/\s+/);
+    const keyword = tokens.pop();
+    const parent = tokens.length ? this._nodeFor(tokens.join(' ')) : this.root;
+    const target = parent.literals.get(keyword);
+    if (!target) throw new Error(`Cannot alias unknown keyword "${path}"`);
+    parent.literals.set(alias, target);
+    parent.aliasKeys.add(alias);
+  }
+
+  /**
    * Resolves a tokenized command line to a handler + captured args.
    * @param {string[]} tokens
    * @returns {{handler: Function, args: object, path: string}|{error: string, kind: string, token?: string, matches?: string[]}}
@@ -109,6 +131,13 @@ export class CommandTree {
         continue;
       }
       if (matches.length > 1) {
+        // Several spellings of the same keyword (see `alias`) are not a real
+        // ambiguity — they all lead to the very same node.
+        const targets = new Set(matches.map((word) => node.literals.get(word)));
+        if (targets.size === 1) {
+          node = node.literals.get(matches[0]);
+          continue;
+        }
         return {
           error: `% Ambiguous command: "${tokens.slice(0, i + 1).join(' ')}"`,
           kind: ResolveError.AMBIGUOUS,
@@ -154,7 +183,7 @@ export class CommandTree {
 
     for (const token of fullWords) {
       const matches = this._literalMatches(node, token);
-      if (matches.length === 1) {
+      if (matches.length >= 1 && new Set(matches.map((w) => node.literals.get(w))).size === 1) {
         node = node.literals.get(matches[0]);
       } else if (node.param) {
         node = node.param.node;
@@ -163,7 +192,9 @@ export class CommandTree {
       }
     }
 
-    const completions = [...node.literals.keys()].filter((word) => word.startsWith(partial)).sort();
+    const completions = [...node.literals.keys()]
+      .filter((word) => word.startsWith(partial) && !node.aliasKeys.has(word))
+      .sort();
     const descriptions = {};
     for (const word of completions) {
       const child = node.literals.get(word);

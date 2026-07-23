@@ -186,4 +186,26 @@ describe('Cisco "Mega Chuleta" show commands are all recognized', () => {
     assert.match(s.execute('show vlan id 30'), /30/);
     assert.match(s.execute('show interface FastEthernet0/1 switchport'), /Access Mode VLAN: 30/);
   });
+
+  test('interface/interfaces abbreviate like real IOS, never ambiguous', () => {
+    const s = switchSession();
+    s.execute('enable');
+    for (const cmd of [
+      'sh int status',
+      'sh inter status',
+      'show int status',
+      'show interface status',
+      'show interfaces status',
+      'sh int FastEthernet0/1',
+      'sh interfaces FastEthernet0/1',
+    ]) {
+      assert.doesNotMatch(s.execute(cmd), /Ambiguous|Invalid input/, `"${cmd}" should resolve`);
+    }
+  });
+
+  test('a genuinely ambiguous abbreviation is still rejected', () => {
+    const s = switchSession();
+    s.execute('enable');
+    assert.match(s.execute('show i'), /Ambiguous/);
+  });
 });

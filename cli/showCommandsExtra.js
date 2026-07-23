@@ -53,11 +53,14 @@ export function registerExtraShowCommands(tree) {
   add('show vlan filter', () => 'VLAN Map has no filters configured');
 
   // --- Interfaces (verbose + facets) ----------------------------------
-  add('show interface <name>', (s, a) => renderOneInterface(s.device, a.name));
-  add('show interface <name> status', (s, a) => renderIfStatusOne(s, a.name));
-  add('show interface <name> switchport', (s, a) => renderSwitchportOne(s.device, a.name));
-  add('show interface <name> description', (s, a) => renderIfDescription(s.device, a.name));
-  add('show interface <name> counters', (s, a) => renderIfCounters(s.device, a.name));
+  // Per-interface forms hang off the same `interfaces` node as the global
+  // ones, and `interface` is registered below as an alias of it — otherwise
+  // `sh int status` would be ambiguous, which real IOS never reports.
+  add('show interfaces <name>', (s, a) => renderOneInterface(s.device, a.name));
+  add('show interfaces <name> status', (s, a) => renderIfStatusOne(s, a.name));
+  add('show interfaces <name> switchport', (s, a) => renderSwitchportOne(s.device, a.name));
+  add('show interfaces <name> description', (s, a) => renderIfDescription(s.device, a.name));
+  add('show interfaces <name> counters', (s, a) => renderIfCounters(s.device, a.name));
 
   add('show interfaces description', (s) => renderIfDescription(s.device));
   add('show interfaces switchport', (s) => renderSwitchportAll(s.device));
@@ -211,6 +214,10 @@ export function registerExtraShowCommands(tree) {
     (s) =>
       `------------------ show version ------------------\n(see 'show version' — full tech-support is not modeled)\n\nHostname: ${s.device.hostname}`,
   );
+
+  // IOS accepts both spellings as one keyword, so `sh int`, `sh inter` and
+  // `sh interface Gi0/0` all land on the `show interfaces` subtree.
+  tree.alias('show interfaces', 'interface');
 }
 
 // --- real renderers ------------------------------------------------------
