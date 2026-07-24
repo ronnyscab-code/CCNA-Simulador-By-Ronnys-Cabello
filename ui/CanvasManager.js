@@ -64,10 +64,11 @@ export class CanvasManager extends EventTarget {
     this.snapEnabled = true;
     // Canvas view modes. Chassis draws devices as their real front panel,
     // zones outline each broadcast domain, telemetry colours cables by their
-    // live state and labels each end with its interface.
-    this.chassisMode = false;
-    this.zonesVisible = false;
-    this.telemetryVisible = false;
+    // live state and labels each end with its interface. On by default so the
+    // richer picture is what a learner sees first; each can be toggled off.
+    this.chassisMode = true;
+    this.zonesVisible = true;
+    this.telemetryVisible = true;
     this.connectMode = false;
     this.connectSourceId = null;
     this.pendingEdgeToPoint = null;
