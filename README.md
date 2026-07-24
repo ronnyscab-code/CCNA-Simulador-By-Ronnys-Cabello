@@ -8,6 +8,8 @@ project.
 
 Runs 100% in the browser. No backend, no build step, no account.
 
+Created by **[Ronnys Cabello](https://www.linkedin.com/in/ronnyscabello)**.
+
 ## Status
 
 **v1.0 released.** The editor, device model, Cisco-style CLI, packet engine,
@@ -188,6 +190,10 @@ described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md):
 - No exam questions are copied from Cisco, ExamTopics, Boson, 9tut, or any
   other question bank. The CCNA Trainer uses an original question bank
   written against the public CCNA 200-301 exam blueprint.
+
+## Author
+
+**Ronnys Cabello** — [linkedin.com/in/ronnyscabello](https://www.linkedin.com/in/ronnyscabello)
 
 ## License
 
