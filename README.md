@@ -139,6 +139,16 @@ This project is designed to be deployed as-is to GitHub Pages: point Pages
 at the repository root (or `main` branch) and it works with zero
 configuration.
 
+### Android app (APK)
+
+The simulator can be packaged as an offline Android app with Capacitor — the
+`android/` folder is a ready-to-open Android Studio project. See
+[docs/ANDROID.md](docs/ANDROID.md) for the full walkthrough.
+
+```bash
+npm run open:android   # bundles the web app and opens Android Studio
+```
+
 ## Development
 
 ```bash

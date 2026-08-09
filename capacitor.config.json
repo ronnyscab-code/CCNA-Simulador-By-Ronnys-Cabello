@@ -1,0 +1,8 @@
+{
+  "appId": "com.ronnyscabello.openccna",
+  "appName": "OpenCCNA Simulator",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  }
+}

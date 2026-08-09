@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">OpenCCNA Simulator</string>
+    <string name="title_activity_main">OpenCCNA Simulator</string>
+    <string name="package_name">com.ronnyscabello.openccna</string>
+    <string name="custom_url_scheme">com.ronnyscabello.openccna</string>
+</resources>
