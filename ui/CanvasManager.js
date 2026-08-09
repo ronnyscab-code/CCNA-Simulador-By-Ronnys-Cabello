@@ -140,6 +140,10 @@ export class CanvasManager extends EventTarget {
       zones: this.zonesVisible,
       telemetry: this.telemetryVisible,
       portLabels: this.telemetryVisible,
+      // Diagram-style right-angle cabling rides with the zones view; the
+      // live-traffic flow along active links rides with telemetry.
+      orthogonal: this.zonesVisible,
+      flow: this.telemetryVisible,
       shortPort,
       layouts: new Map(),
       modelLabels: new Map(),

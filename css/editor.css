@@ -1453,6 +1453,36 @@
   stroke-dasharray: 4 4;
 }
 
+/* Right-angle cabling (zones view) draws cables as <path>; keep them unfilled. */
+.topology-edge,
+.topology-edge-hit,
+.link-flow {
+  fill: none;
+}
+
+/* Live-traffic flow: dots gliding along each active cable (telemetry view). */
+.link-flow {
+  stroke: var(--color-accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 0.5 13;
+  opacity: 0.9;
+  pointer-events: none;
+  animation: linkFlow 0.9s linear infinite;
+}
+
+@keyframes linkFlow {
+  to {
+    stroke-dashoffset: -13.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link-flow {
+    display: none;
+  }
+}
+
 .edge-port-label {
   font-family: var(--font-family-mono);
   font-size: 9px;

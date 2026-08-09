@@ -147,8 +147,8 @@ export function renderNodes(refs, nodes, selectedNodeIds, connectSourceId, view 
 
     const layout = view.chassis ? view.layouts?.get(node.id) : null;
     if (layout) {
-      if (fault)
-        group.appendChild(faultRing(Math.max(layout.width, layout.height) / 2 + 12, fault));
+      const chassisRadius = Math.max(layout.width, layout.height) / 2 + 12;
+      if (fault) group.appendChild(faultRing(chassisRadius, fault));
       renderChassis(group, node, layout, view);
       if (ip) group.appendChild(ipLabel(ip, layout.height / 2 + 13));
       refs.nodesLayer.appendChild(group);
@@ -397,27 +397,17 @@ export function renderEdges(refs, edges, nodesById, selectedEdgeIds, view = {}) 
     const from = anchorFor(source, edge.sourcePort, view);
     const to = anchorFor(target, edge.targetPort, view);
     const level = view.linkLevels?.get(edge.id) ?? null;
+    // In "diagram" mode (zones on) cables run at right angles like a real
+    // network drawing; otherwise they're straight point-to-point.
+    const d = view.orthogonal ? elbowPath(from, to) : null;
 
     const group = createSvgElement('g', {
       class: 'topology-edge-group',
       'data-edge-id': edge.id,
     });
 
-    const hitLine = createSvgElement('line', {
-      class: 'topology-edge-hit',
-      x1: from.x,
-      y1: from.y,
-      x2: to.x,
-      y2: to.y,
-    });
-
-    const visibleLine = createSvgElement('line', {
-      class: `topology-edge${level ? ` link-${level}` : ''}`,
-      x1: from.x,
-      y1: from.y,
-      x2: to.x,
-      y2: to.y,
-    });
+    const hitLine = edgeShape('topology-edge-hit', from, to, d);
+    const visibleLine = edgeShape(`topology-edge${level ? ` link-${level}` : ''}`, from, to, d);
     if (selectedEdgeIds.has(edge.id)) visibleLine.classList.add('selected');
 
     const reason = view.linkReasons?.get(edge.id);
@@ -429,6 +419,12 @@ export function renderEdges(refs, edges, nodesById, selectedEdgeIds, view = {}) 
 
     group.append(hitLine, visibleLine);
 
+    // Live-traffic flow: a stream of dots gliding along each healthy cable so
+    // the wire reads as active. Telemetry-only and CSS-animated.
+    if (view.flow && level === 'ok') {
+      group.appendChild(edgeShape('link-flow', from, to, d));
+    }
+
     if (view.portLabels) {
       group.append(
         portLabel(from, to, edge.sourcePort, view),
@@ -438,6 +434,42 @@ export function renderEdges(refs, edges, nodesById, selectedEdgeIds, view = {}) 
 
     refs.edgesLayer.appendChild(group);
   }
+}
+
+/**
+ * Builds a cable segment as a right-angle `<path>` when `d` is given, or a
+ * straight `<line>` otherwise, so hit area, visible cable, and flow overlay
+ * all trace the same route.
+ * @param {string} className
+ * @param {{x: number, y: number}} from
+ * @param {{x: number, y: number}} to
+ * @param {string|null} d - an SVG path, or null for a straight line.
+ * @returns {SVGElement}
+ */
+function edgeShape(className, from, to, d) {
+  if (d) return createSvgElement('path', { class: className, d });
+  return createSvgElement('line', { class: className, x1: from.x, y1: from.y, x2: to.x, y2: to.y });
+}
+
+/**
+ * A right-angle elbow between two points, turning along the dominant axis so
+ * the bend reads cleanly — horizontal-first for wide links, vertical-first
+ * for tall ones.
+ * @param {{x: number, y: number}} from
+ * @param {{x: number, y: number}} to
+ * @returns {string} an SVG path `d`.
+ */
+function elbowPath(from, to) {
+  const x1 = Math.round(from.x);
+  const y1 = Math.round(from.y);
+  const x2 = Math.round(to.x);
+  const y2 = Math.round(to.y);
+  if (Math.abs(x2 - x1) >= Math.abs(y2 - y1)) {
+    const midX = Math.round((x1 + x2) / 2);
+    return `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`;
+  }
+  const midY = Math.round((y1 + y2) / 2);
+  return `M ${x1} ${y1} V ${midY} H ${x2} V ${y2}`;
 }
 
 /**
