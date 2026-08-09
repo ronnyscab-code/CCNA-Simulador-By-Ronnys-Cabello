@@ -39,7 +39,7 @@ import {
 import { frontPanelLayout } from '../devices/frontPanel.js';
 import { modelLabel } from '../devices/models.js';
 import { computeZones } from '../topology/segments.js';
-import { linkStates, shortPort } from '../engine/telemetry.js';
+import { linkStates, shortPort, nodePrimaryIp, nodeFaultLevels } from '../engine/telemetry.js';
 
 export class CanvasManager extends EventTarget {
   /**
@@ -146,6 +146,8 @@ export class CanvasManager extends EventTarget {
       linkLevels: new Map(),
       linkReasons: new Map(),
       portLevels: new Map(),
+      nodeIps: new Map(),
+      nodeFaults: new Map(),
       zoneList: [],
     };
 
@@ -168,6 +170,16 @@ export class CanvasManager extends EventTarget {
         view.portLevels.set(`${link.b.nodeId}|${link.b.port}`, link.level);
       }
       if (!this.telemetryVisible) view.linkLevels.clear();
+    }
+
+    // The IP under each node and the pulsing fault ring are part of the live
+    // telemetry read, so they ride with that view mode.
+    if (this.telemetryVisible) {
+      for (const node of nodes) {
+        const ip = nodePrimaryIp(node);
+        if (ip) view.nodeIps.set(node.id, ip);
+      }
+      view.nodeFaults = nodeFaultLevels(this.topology);
     }
 
     if (this.zonesVisible) view.zoneList = computeZones(this.topology);

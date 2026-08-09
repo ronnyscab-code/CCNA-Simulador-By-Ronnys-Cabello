@@ -142,12 +142,20 @@ export function renderNodes(refs, nodes, selectedNodeIds, connectSourceId, view 
     if (selectedNodeIds.has(node.id)) group.classList.add('selected');
     if (connectSourceId === node.id) group.classList.add('connect-source');
 
+    const fault = view.nodeFaults?.get(node.id) ?? null;
+    const ip = view.nodeIps?.get(node.id) ?? null;
+
     const layout = view.chassis ? view.layouts?.get(node.id) : null;
     if (layout) {
+      if (fault)
+        group.appendChild(faultRing(Math.max(layout.width, layout.height) / 2 + 12, fault));
       renderChassis(group, node, layout, view);
+      if (ip) group.appendChild(ipLabel(ip, layout.height / 2 + 13));
       refs.nodesLayer.appendChild(group);
       continue;
     }
+
+    if (fault) group.appendChild(faultRing(Math.max(node.width, node.height) / 2 + 12, fault));
 
     const halfW = node.width / 2;
     const halfH = node.height / 2;
@@ -188,8 +196,41 @@ export function renderNodes(refs, nodes, selectedNodeIds, connectSourceId, view 
     label.style.pointerEvents = 'none';
 
     group.append(hitArea, iconBg, icon, label);
+    if (ip) group.appendChild(ipLabel(ip, halfH + 30));
     refs.nodesLayer.appendChild(group);
   }
+}
+
+/**
+ * A pulsing ring drawn behind a node whose own cabling has a fault, so the
+ * eye lands on the broken device. The pulse itself is pure CSS (and honours
+ * `prefers-reduced-motion`); this only places the circle.
+ * @param {number} radius
+ * @param {'down'|'warn'} level
+ * @returns {SVGElement}
+ */
+function faultRing(radius, level) {
+  const ring = createSvgElement('circle', {
+    class: `node-fault-ring fault-${level}`,
+    cx: 0,
+    cy: 0,
+    r: radius,
+  });
+  ring.style.pointerEvents = 'none';
+  return ring;
+}
+
+/**
+ * The device's IP, floated just under the node.
+ * @param {string} text
+ * @param {number} y
+ * @returns {SVGElement}
+ */
+function ipLabel(text, y) {
+  const label = createSvgElement('text', { class: 'node-ip-label', x: 0, y });
+  label.textContent = text;
+  label.style.pointerEvents = 'none';
+  return label;
 }
 
 /**

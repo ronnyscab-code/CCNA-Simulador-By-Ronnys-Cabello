@@ -1460,6 +1460,54 @@
   pointer-events: none;
 }
 
+/* IP printed under each device in telemetry mode. */
+.node-ip-label {
+  font-family: var(--font-family-mono);
+  font-size: 10px;
+  fill: var(--color-text-muted);
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+/* Pulsing ring around a device whose cabling has a fault. */
+.node-fault-ring {
+  fill: none;
+  stroke-width: 2.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nodeFaultPulse 1.8s ease-out infinite;
+}
+
+.node-fault-ring.fault-down {
+  stroke: var(--color-danger);
+}
+
+.node-fault-ring.fault-warn {
+  stroke: var(--color-warning);
+}
+
+@keyframes nodeFaultPulse {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.82);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(1.28);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.28);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .node-fault-ring {
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
 /* Live-state rail floating over the canvas. */
 /* Bottom-left: the objective HUD owns the top-right corner of the canvas. */
 .telemetry-rail {

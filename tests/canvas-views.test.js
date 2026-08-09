@@ -6,7 +6,14 @@ import { Node } from '../topology/Node.js';
 import { Edge } from '../topology/Edge.js';
 import { frontPanelLayout, portAnchor, findPort, interfaceFamily } from '../devices/frontPanel.js';
 import { computeZones, accessVlanOf, layer2Components } from '../topology/segments.js';
-import { linkStates, shortPort, interfaceRows, buildTelemetry } from '../engine/telemetry.js';
+import {
+  linkStates,
+  shortPort,
+  interfaceRows,
+  buildTelemetry,
+  nodePrimaryIp,
+  nodeFaultLevels,
+} from '../engine/telemetry.js';
 
 /**
  * Builds R1 — SW1 — PC1/PC2, the same reference topology the design mockups
@@ -239,5 +246,37 @@ describe('link telemetry', () => {
     const row = interfaceRows(sw1).find((r) => r.short === 'Fa0/1');
     assert.equal(row.ip, null);
     assert.equal(row.vlan, 1);
+  });
+});
+
+describe('node IP labels and fault pulses', () => {
+  test('an endpoint labels its address, a switch labels nothing', () => {
+    const { pc1, sw1 } = refTopology();
+    assert.equal(nodePrimaryIp(pc1), '192.168.1.10');
+    assert.equal(nodePrimaryIp(sw1), null);
+  });
+
+  test('a router shows its first addressed interface', () => {
+    const { r1 } = refTopology();
+    assert.equal(nodePrimaryIp(r1), '192.168.1.1');
+  });
+
+  test('a healthy topology has no pulsing nodes', () => {
+    const { topology } = refTopology();
+    assert.equal(nodeFaultLevels(topology).size, 0);
+  });
+
+  test('the node that owns a shut interface pulses down — and only it', () => {
+    const { topology, r1 } = refTopology();
+    r1.device.getInterface('GigabitEthernet0/0').enabled = false;
+    const faults = nodeFaultLevels(topology);
+    assert.equal(faults.get('r1'), 'down');
+    assert.equal(faults.has('pc1'), false, 'the healthy peer must not pulse');
+  });
+
+  test('a cabled router port with no IP pulses as a warning', () => {
+    const { topology, r1 } = refTopology();
+    r1.device.getInterface('GigabitEthernet0/0').ipAddress = null;
+    assert.equal(nodeFaultLevels(topology).get('r1'), 'warn');
   });
 });

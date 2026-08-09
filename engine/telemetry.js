@@ -122,6 +122,44 @@ function vlanMismatch(a, ifaceA, b, ifaceB) {
 }
 
 /**
+ * The IP to print under a device on the canvas: the first addressed
+ * interface. Switches have no Layer-3 address of their own, so they get none.
+ * @param {object} node
+ * @returns {string|null}
+ */
+export function nodePrimaryIp(node) {
+  if (!node?.device || node.device.capabilities?.switching) return null;
+  const iface = node.device.interfaces.find((i) => i.ipAddress);
+  return iface ? iface.ipAddress : null;
+}
+
+/**
+ * The worst fault on each node's own cabled interfaces, so the canvas can make
+ * a failing device pulse. A shut interface is a hard `down`; a cabled routed
+ * port with no IP is a `warn`. Nodes that are fine are absent from the map.
+ * @param {import('../topology/Topology.js').Topology} topology
+ * @returns {Map<string, 'down'|'warn'>}
+ */
+export function nodeFaultLevels(topology) {
+  const faults = new Map();
+  for (const node of topology.getNodes()) {
+    if (!node.device) continue;
+    let level = null;
+    for (const edge of topology.getEdgesForNode(node.id)) {
+      const iface = node.device.getInterface(topology.portForNode(edge, node.id));
+      if (!iface) continue;
+      if (!iface.enabled) {
+        level = 'down';
+        break;
+      }
+      if (needsAddress(node) && !iface.ipAddress) level = 'warn';
+    }
+    if (level) faults.set(node.id, level);
+  }
+  return faults;
+}
+
+/**
  * The interface rows the rail shows for one device.
  * @param {object} node
  * @returns {Array<{name: string, short: string, ip: string|null, up: boolean, vlan: number|null}>}
