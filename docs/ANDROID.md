@@ -69,11 +69,25 @@ npm run sync:android   # copia www/ dentro del proyecto Android
 
 Después, en Android Studio pulsa **Run ▶** o vuelve a **Build APK(s)**.
 
-## Cambiar el icono y el nombre
+## Icono y pantalla de carga
+
+La app ya trae un icono propio (una topología de red sobre fondo oscuro) y una
+pantalla de carga a juego, generados para todas las densidades de Android.
+
+Las fuentes editables están en `resources/`:
+
+- `icon-foreground.svg` / `icon-background.svg` — icono adaptativo (Android 8+).
+- `icon-only.svg` — icono para versiones antiguas.
+- `splash.svg` / `splash-dark.svg` — pantalla de carga.
+
+Si editas cualquiera de esas SVG, regenera todos los tamaños con:
+
+```bash
+npm run assets:android
+```
+
+## Cambiar el nombre o el paquete
 
 - **Nombre visible:** `android/app/src/main/res/values/strings.xml` → `app_name`.
-- **Icono:** clic derecho en `app` → **New** → **Image Asset**, elige tu imagen y
-  genera los iconos. O usa [`@capacitor/assets`](https://github.com/ionic-team/capacitor-assets)
-  con un PNG de 1024×1024 y un comando.
 - **ID del paquete:** `com.ronnyscabello.openccna` (en `capacitor.config.json` y
   `android/app/build.gradle`). Cámbialo antes de publicar si quieres otro.

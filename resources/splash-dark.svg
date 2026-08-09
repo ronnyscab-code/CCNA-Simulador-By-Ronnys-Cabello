@@ -1,0 +1,20 @@
+<svg width="2732" height="2732" viewBox="0 0 2732 2732" xmlns="http://www.w3.org/2000/svg">
+  <rect width="2732" height="2732" fill="#1b1d24"/>
+  <g transform="translate(1366 1230)">
+    <g fill="none" stroke="#4f9dff" stroke-width="16" stroke-linecap="round">
+      <line x1="0" y1="0" x2="0" y2="-176"/>
+      <line x1="0" y1="0" x2="-150" y2="140"/>
+      <line x1="0" y1="0" x2="150" y2="140"/>
+    </g>
+    <g>
+      <circle cx="0" cy="-176" r="46" fill="#e8e9ee"/><circle cx="0" cy="-176" r="18" fill="#1b1d24"/>
+      <circle cx="-150" cy="140" r="46" fill="#e8e9ee"/><circle cx="-150" cy="140" r="18" fill="#1b1d24"/>
+      <circle cx="150" cy="140" r="46" fill="#e8e9ee"/><circle cx="150" cy="140" r="18" fill="#1b1d24"/>
+    </g>
+    <rect x="-82" y="-48" width="164" height="98" rx="18" fill="#1b1d24" stroke="#4f9dff" stroke-width="16"/>
+    <path d="M-46 1 h40 m0 0 -13 -12 m13 12 -13 12" fill="none" stroke="#4f9dff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M46 19 h-40 m0 0 13 12 m-13 -12 13 -12" fill="none" stroke="#e8e9ee" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1366" y="1560" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="86" font-weight="500" fill="#e8e9ee">OpenCCNA Simulator</text>
+  <text x="1366" y="1640" text-anchor="middle" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="46" fill="#9a9cab">por Ronnys Cabello</text>
+</svg>

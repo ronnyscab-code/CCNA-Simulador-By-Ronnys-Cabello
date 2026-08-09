@@ -1,0 +1,12 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#20222b"/>
+  <g fill="#2c2f3a">
+    <circle cx="128" cy="128" r="4"/><circle cx="256" cy="128" r="4"/><circle cx="384" cy="128" r="4"/><circle cx="512" cy="128" r="4"/><circle cx="640" cy="128" r="4"/><circle cx="768" cy="128" r="4"/><circle cx="896" cy="128" r="4"/>
+    <circle cx="128" cy="256" r="4"/><circle cx="256" cy="256" r="4"/><circle cx="384" cy="256" r="4"/><circle cx="512" cy="256" r="4"/><circle cx="640" cy="256" r="4"/><circle cx="768" cy="256" r="4"/><circle cx="896" cy="256" r="4"/>
+    <circle cx="128" cy="384" r="4"/><circle cx="256" cy="384" r="4"/><circle cx="384" cy="384" r="4"/><circle cx="512" cy="384" r="4"/><circle cx="640" cy="384" r="4"/><circle cx="768" cy="384" r="4"/><circle cx="896" cy="384" r="4"/>
+    <circle cx="128" cy="512" r="4"/><circle cx="256" cy="512" r="4"/><circle cx="384" cy="512" r="4"/><circle cx="512" cy="512" r="4"/><circle cx="640" cy="512" r="4"/><circle cx="768" cy="512" r="4"/><circle cx="896" cy="512" r="4"/>
+    <circle cx="128" cy="640" r="4"/><circle cx="256" cy="640" r="4"/><circle cx="384" cy="640" r="4"/><circle cx="512" cy="640" r="4"/><circle cx="640" cy="640" r="4"/><circle cx="768" cy="640" r="4"/><circle cx="896" cy="640" r="4"/>
+    <circle cx="128" cy="768" r="4"/><circle cx="256" cy="768" r="4"/><circle cx="384" cy="768" r="4"/><circle cx="512" cy="768" r="4"/><circle cx="640" cy="768" r="4"/><circle cx="768" cy="768" r="4"/><circle cx="896" cy="768" r="4"/>
+    <circle cx="128" cy="896" r="4"/><circle cx="256" cy="896" r="4"/><circle cx="384" cy="896" r="4"/><circle cx="512" cy="896" r="4"/><circle cx="640" cy="896" r="4"/><circle cx="768" cy="896" r="4"/><circle cx="896" cy="896" r="4"/>
+  </g>
+</svg>
