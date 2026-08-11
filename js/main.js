@@ -26,6 +26,7 @@ import { TerminalManager } from '../ui/TerminalManager.js';
 import { PacketEngine } from '../engine/PacketEngine.js';
 import { PacketAnimator } from '../ui/PacketAnimator.js';
 import { TelemetryRail } from '../ui/TelemetryRail.js';
+import { APP_VERSION } from './version.js';
 
 const AUTOSAVE_TOPOLOGY_EVENTS = [
   'nodeAdded',
@@ -132,6 +133,18 @@ function bootstrap() {
 
   restoreAutosave(topology, storage);
   wireAutosave(topology, storage);
+
+  // Stamp the build label everywhere it's useful, so it's obvious which
+  // version is running on the phone.
+  const versionEl = document.getElementById('app-version');
+  if (versionEl) versionEl.textContent = APP_VERSION;
+  document.title = `OpenCCNA Simulator ${APP_VERSION}`;
+
+  // The mobile device drawer closes as soon as you pick a device or touch the
+  // canvas, so it never sits in the way.
+  const closeMobilePalette = () => document.body.classList.remove('mobile-palette-open');
+  document.getElementById('palette-list')?.addEventListener('click', closeMobilePalette);
+  container.addEventListener('pointerdown', closeMobilePalette);
 
   // Re-frame on window resize / phone rotation while auto-fit is active.
   window.addEventListener('resize', () => canvasManager.handleResize());

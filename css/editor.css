@@ -1235,37 +1235,61 @@
     min-height: 0;
   }
 
-  /* Devices become a drawer: hidden by default so the canvas gets the whole
-     screen; the ☰ button in the toolbar slides it in. */
+  /* Devices become a slide-in drawer: hidden by default so the canvas gets
+     the whole screen; the ☰ button reveals a tidy vertical list floating
+     over the canvas. */
+  .app-body {
+    position: relative;
+  }
   .device-palette {
     order: 0;
-    border-right: none;
-    border-bottom: 1px solid var(--color-border);
-    padding: var(--space-2);
-    overflow-x: auto;
-    overflow-y: hidden;
-    flex: 0 0 auto;
     display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 224px;
+    max-width: 82vw;
+    height: 100%;
+    overflow-y: auto;
+    padding: var(--space-3);
+    background: var(--color-surface);
+    border-right: 1px solid var(--color-border);
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.35);
+    z-index: 20;
   }
   body.mobile-palette-open .device-palette {
     display: block;
   }
-  .palette-title,
+  .palette-title {
+    display: block;
+    margin-bottom: var(--space-2);
+  }
   .palette-hint {
     display: none;
   }
   .palette-list {
-    flex-direction: row;
-    gap: var(--space-1);
+    flex-direction: column;
+    gap: 2px;
   }
   .palette-item {
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 2px;
-    min-width: 62px;
-    font-size: 11px;
-    text-align: center;
-    padding: var(--space-1);
+    gap: var(--space-2);
+    padding: var(--space-2);
+    font-size: 13px;
+    border-radius: var(--radius-sm);
+  }
+  .palette-item img {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+  }
+  .palette-item > span {
+    flex: 1 1 auto;
+  }
+  .palette-model {
+    max-width: 118px;
+    flex: 0 0 auto;
   }
 
   .canvas-container {
