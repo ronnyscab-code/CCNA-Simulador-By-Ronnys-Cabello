@@ -62,6 +62,11 @@ export class CanvasManager extends EventTarget {
 
     this.gridVisible = true;
     this.snapEnabled = true;
+    // Auto-fit keeps the whole network framed in the viewport. It stays on
+    // until the user takes manual control (zoom/pan for detail), then it
+    // steps aside so their close-up view is preserved on resize/rotate.
+    // Loading a lab or pressing "fit" turns it back on.
+    this.autoFit = true;
     // Canvas view modes. Chassis draws devices as their real front panel,
     // zones outline each broadcast domain, telemetry colours cables by their
     // live state and labels each end with its interface. On by default so the
@@ -402,17 +407,39 @@ export class CanvasManager extends EventTarget {
   }
 
   zoomIn() {
+    this.markManualView();
     const rect = this.container.getBoundingClientRect();
     this.camera.zoomIn(rect.width / 2, rect.height / 2);
   }
 
   zoomOut() {
+    this.markManualView();
     const rect = this.container.getBoundingClientRect();
     this.camera.zoomOut(rect.width / 2, rect.height / 2);
   }
 
   zoomResetView() {
+    this.markManualView();
     this.camera.reset();
+  }
+
+  /**
+   * Records that the user has taken manual control of the camera (zoomed or
+   * panned for detail), so auto-fit stops re-framing on resize until they ask
+   * for it again.
+   */
+  markManualView() {
+    this.autoFit = false;
+  }
+
+  /**
+   * Re-frames on viewport changes (window resize, phone rotation) while
+   * auto-fit is on; otherwise just repaints, leaving the user's close-up
+   * view untouched.
+   */
+  handleResize() {
+    if (this.autoFit) this.zoomToFit();
+    else this.render();
   }
 
   /**
@@ -445,6 +472,8 @@ export class CanvasManager extends EventTarget {
    * when the canvas is empty.
    */
   zoomToFit() {
+    // Fitting IS the framed state, so auto-fit resumes from here.
+    this.autoFit = true;
     const bounds = this.contentBounds(this.topology.getNodes());
     if (!bounds) {
       this.camera.reset();

@@ -133,7 +133,12 @@ function bootstrap() {
   restoreAutosave(topology, storage);
   wireAutosave(topology, storage);
 
-  window.addEventListener('resize', () => canvasManager.render());
+  // Re-frame on window resize / phone rotation while auto-fit is active.
+  window.addEventListener('resize', () => canvasManager.handleResize());
+
+  // Open already framed: if a saved topology was restored, fit it to the
+  // screen once the layout has settled.
+  requestAnimationFrame(() => canvasManager.zoomToFit());
 }
 
 /**

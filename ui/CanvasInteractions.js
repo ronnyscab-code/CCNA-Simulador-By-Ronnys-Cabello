@@ -91,6 +91,7 @@ export class CanvasInteractions {
 
     if (event.button === 1) {
       event.preventDefault();
+      this.canvasManager.markManualView();
       this.isPanning = true;
       this.panLast = { x: event.clientX, y: event.clientY };
       return;
@@ -123,6 +124,7 @@ export class CanvasInteractions {
     // On a phone, one finger on empty canvas pans (there's no marquee-select
     // on touch); a mouse still rubber-band selects.
     if (event.pointerType === 'touch') {
+      this.canvasManager.markManualView();
       this.isPanning = true;
       this.panLast = { x: event.clientX, y: event.clientY };
       return;
@@ -134,6 +136,7 @@ export class CanvasInteractions {
    * Begins a two-finger pinch from the current pointer positions.
    */
   _startPinch() {
+    this.canvasManager.markManualView();
     const pts = [...this.pointers.values()];
     const midClient = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
     this.pinch = {
@@ -285,6 +288,7 @@ export class CanvasInteractions {
 
   _onWheel(event) {
     event.preventDefault();
+    this.canvasManager.markManualView();
     const screen = this.canvasManager.screenPointFromClient(event.clientX, event.clientY);
     const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
     this.canvasManager.camera.zoomAt(factor, screen.x, screen.y);
