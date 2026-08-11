@@ -61,6 +61,14 @@ p {
   position: relative;
   overflow: hidden;
   background: var(--color-canvas-bg);
+  /* Own every touch: the browser must not pan/zoom the page, so pinch and
+     one-finger pan reach the canvas gestures instead. */
+  touch-action: none;
+}
+
+/* Shown only on small screens (e.g. the device-palette toggle). */
+.toolbar-mobile-only {
+  display: none;
 }
 
 #canvas-root {

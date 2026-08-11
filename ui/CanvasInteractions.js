@@ -34,6 +34,13 @@ export class CanvasInteractions {
     this.isRubberBanding = false;
     this.rubberStartScreen = null;
 
+    // Touch: every active finger, keyed by pointerId, plus the two-finger
+    // pinch gesture in progress (zoom + pan on a phone).
+    /** @type {Map<number, {x: number, y: number}>} */
+    this.pointers = new Map();
+    /** @type {{startDist: number, startScale: number, lastMid: {x:number,y:number}}|null} */
+    this.pinch = null;
+
     this._bindHandlers();
     this._attach();
   }
@@ -71,6 +78,17 @@ export class CanvasInteractions {
   _onPointerDown(event) {
     if (this.inlineEditor.isEditing()) return;
 
+    if (event.pointerType === 'touch') {
+      this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      // Two fingers down anywhere → pinch-zoom + pan, cancelling whatever a
+      // single finger had started.
+      if (this.pointers.size >= 2) {
+        this._cancelActiveGesture();
+        this._startPinch();
+        return;
+      }
+    }
+
     if (event.button === 1) {
       event.preventDefault();
       this.isPanning = true;
@@ -101,7 +119,45 @@ export class CanvasInteractions {
       this.canvasManager.cancelConnect();
       return;
     }
+
+    // On a phone, one finger on empty canvas pans (there's no marquee-select
+    // on touch); a mouse still rubber-band selects.
+    if (event.pointerType === 'touch') {
+      this.isPanning = true;
+      this.panLast = { x: event.clientX, y: event.clientY };
+      return;
+    }
     this._startRubberBand(event);
+  }
+
+  /**
+   * Begins a two-finger pinch from the current pointer positions.
+   */
+  _startPinch() {
+    const pts = [...this.pointers.values()];
+    const midClient = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+    this.pinch = {
+      startDist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1,
+      startScale: this.canvasManager.camera.scale,
+      lastMid: this.canvasManager.screenPointFromClient(midClient.x, midClient.y),
+    };
+  }
+
+  /**
+   * Ends any single-finger gesture cleanly (committing a node drag) so a
+   * pinch can take over without leaving state half-set.
+   */
+  _cancelActiveGesture() {
+    if (this.isDraggingNodes) {
+      this.canvasManager.commitNodeMove(Array.from(this.dragMoves.values()));
+      this.isDraggingNodes = false;
+      this.dragMoves = null;
+    }
+    this.isPanning = false;
+    if (this.isRubberBanding) {
+      this.isRubberBanding = false;
+      this.canvasManager.endRubberBandSelection();
+    }
   }
 
   _startNodeDrag(nodeId, event) {
@@ -138,6 +194,25 @@ export class CanvasInteractions {
   // --- Pointer: move ------------------------------------------------------
 
   _onPointerMove(event) {
+    if (this.pointers.has(event.pointerId)) {
+      this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+
+    // Pinch: scale toward the fingers' midpoint and pan as it moves.
+    if (this.pinch && this.pointers.size >= 2) {
+      const pts = [...this.pointers.values()];
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+      const mid = this.canvasManager.screenPointFromClient(
+        (pts[0].x + pts[1].x) / 2,
+        (pts[0].y + pts[1].y) / 2,
+      );
+      this.canvasManager.camera.panBy(mid.x - this.pinch.lastMid.x, mid.y - this.pinch.lastMid.y);
+      const targetScale = this.pinch.startScale * (dist / this.pinch.startDist);
+      this.canvasManager.camera.zoomAt(targetScale / this.canvasManager.camera.scale, mid.x, mid.y);
+      this.pinch.lastMid = mid;
+      return;
+    }
+
     if (this.isPanning) {
       const dx = event.clientX - this.panLast.x;
       const dy = event.clientY - this.panLast.y;
@@ -181,7 +256,15 @@ export class CanvasInteractions {
 
   // --- Pointer: up -----------------------------------------------------
 
-  _onPointerUp() {
+  _onPointerUp(event) {
+    this.pointers.delete(event.pointerId);
+    // Lifting a finger out of a pinch ends the gesture; don't let the
+    // remaining finger snap into a pan.
+    if (this.pinch) {
+      if (this.pointers.size < 2) this.pinch = null;
+      return;
+    }
+
     if (this.isPanning) {
       this.isPanning = false;
       return;

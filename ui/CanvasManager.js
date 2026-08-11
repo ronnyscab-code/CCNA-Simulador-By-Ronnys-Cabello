@@ -80,7 +80,14 @@ export class CanvasManager extends EventTarget {
     this.topology.addEventListener('nodeRemoved', () => this._onTopologyStructuralChange());
     this.topology.addEventListener('edgeRemoved', () => this._onTopologyStructuralChange());
     this.topology.addEventListener('cleared', () => this._onTopologyStructuralChange());
-    this.topology.addEventListener('loaded', () => this._onTopologyStructuralChange());
+    // A freshly loaded topology (a lab, a saved file, an import) gets framed
+    // to the viewport so nothing is off-screen — the difference between
+    // "where did my network go?" and it just being there, especially on a
+    // phone. Deferred a tick so the container has its final size.
+    this.topology.addEventListener('loaded', () => {
+      this._onTopologyStructuralChange();
+      requestAnimationFrame(() => this.zoomToFit());
+    });
     this.topology.addEventListener('nodeAdded', () => this.render());
     this.topology.addEventListener('nodeUpdated', () => this.render());
     this.topology.addEventListener('edgeAdded', () => this.render());
@@ -406,6 +413,45 @@ export class CanvasManager extends EventTarget {
 
   zoomResetView() {
     this.camera.reset();
+  }
+
+  /**
+   * The world-space bounding box of every device, accounting for chassis
+   * geometry when that view is on, so "fit" frames the panels, not just the
+   * node centres.
+   * @param {import('../topology/Node.js').Node[]} nodes
+   * @returns {{minX: number, minY: number, maxX: number, maxY: number}|null}
+   */
+  contentBounds(nodes) {
+    if (nodes.length === 0) return null;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const node of nodes) {
+      const layout = this.chassisMode && node.device ? frontPanelLayout(node.device) : null;
+      const halfW = (layout?.width ?? node.width) / 2;
+      const halfH = (layout?.height ?? node.height) / 2;
+      minX = Math.min(minX, node.x - halfW);
+      minY = Math.min(minY, node.y - halfH);
+      maxX = Math.max(maxX, node.x + halfW);
+      maxY = Math.max(maxY, node.y + halfH);
+    }
+    return { minX, minY, maxX, maxY };
+  }
+
+  /**
+   * Frames the whole topology in the viewport. Falls back to a plain reset
+   * when the canvas is empty.
+   */
+  zoomToFit() {
+    const bounds = this.contentBounds(this.topology.getNodes());
+    if (!bounds) {
+      this.camera.reset();
+      return;
+    }
+    const rect = this.container.getBoundingClientRect();
+    this.camera.fitToContent(bounds, rect.width, rect.height);
   }
 
   // --- Connect mode ------------------------------------------------------

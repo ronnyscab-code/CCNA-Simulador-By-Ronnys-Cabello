@@ -75,6 +75,8 @@ export class Toolbar {
       'zoom-in': () => this.canvasManager.zoomIn(),
       'zoom-out': () => this.canvasManager.zoomOut(),
       'zoom-reset': () => this.canvasManager.zoomResetView(),
+      'zoom-fit': () => this.canvasManager.zoomToFit(),
+      'toggle-palette': () => document.body.classList.toggle('mobile-palette-open'),
       'toggle-grid': () => this.canvasManager.toggleGrid(),
       'toggle-snap': () => this.canvasManager.toggleSnap(),
       'toggle-chassis': () => this.canvasManager.toggleChassis(),

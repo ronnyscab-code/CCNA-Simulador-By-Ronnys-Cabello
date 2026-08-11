@@ -83,6 +83,30 @@ export class Camera extends EventTarget {
   }
 
   /**
+   * Frames a world-space bounding box inside the given viewport, so a whole
+   * topology fits on screen without manual panning — the core of "auto-fit"
+   * on small screens. Scale is clamped to the zoom limits, then the content
+   * is centred.
+   * @param {{minX: number, minY: number, maxX: number, maxY: number}} bounds
+   * @param {number} viewW - viewport width in screen px.
+   * @param {number} viewH - viewport height in screen px.
+   * @param {number} [padding] - screen-px margin kept around the content.
+   */
+  fitToContent(bounds, viewW, viewH, padding = 48) {
+    const contentW = Math.max(1, bounds.maxX - bounds.minX);
+    const contentH = Math.max(1, bounds.maxY - bounds.minY);
+    const usableW = Math.max(1, viewW - padding * 2);
+    const usableH = Math.max(1, viewH - padding * 2);
+    this.scale = clamp(Math.min(usableW / contentW, usableH / contentH), MIN_SCALE, MAX_SCALE);
+
+    const centreX = (bounds.minX + bounds.maxX) / 2;
+    const centreY = (bounds.minY + bounds.maxY) / 2;
+    this.tx = viewW / 2 - centreX * this.scale;
+    this.ty = viewH / 2 - centreY * this.scale;
+    this._emitChange();
+  }
+
+  /**
    * Converts a screen-space (pixel, relative to the canvas element) point
    * to world-space (topology) coordinates.
    * @param {number} screenX

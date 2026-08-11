@@ -76,4 +76,39 @@ describe('Camera', () => {
 
     assert.equal(changes, 3);
   });
+
+  describe('fitToContent', () => {
+    test('centres the content in the viewport', () => {
+      const camera = new Camera();
+      // A 200×100 box centred at (100, 50), framed in an 800×600 viewport.
+      camera.fitToContent({ minX: 0, minY: 0, maxX: 200, maxY: 100 }, 800, 600, 0);
+      const screenCentre = camera.toScreen(100, 50);
+      assert.ok(Math.abs(screenCentre.x - 400) < 0.001);
+      assert.ok(Math.abs(screenCentre.y - 300) < 0.001);
+    });
+
+    test('scales so the content fits within the padded viewport', () => {
+      const camera = new Camera();
+      camera.fitToContent({ minX: 0, minY: 0, maxX: 400, maxY: 200 }, 800, 600, 0);
+      // Width is the binding dimension: 800/400 = 2, but height allows 600/200 = 3.
+      assert.equal(camera.scale, 2);
+    });
+
+    test('never exceeds the zoom limits', () => {
+      const camera = new Camera();
+      // A tiny 1×1 box would want a huge scale; it clamps to MAX_SCALE (3).
+      camera.fitToContent({ minX: 0, minY: 0, maxX: 1, maxY: 1 }, 800, 600, 0);
+      assert.ok(camera.scale <= 3);
+    });
+
+    test('honours padding', () => {
+      const camera = new Camera();
+      camera.fitToContent({ minX: 0, minY: 0, maxX: 200, maxY: 200 }, 800, 800, 50);
+      // Usable area is 700×700 for a 200×200 box → 3.5, clamped to 3.
+      assert.ok(camera.scale <= 3);
+      // Content still centred despite the margin.
+      const c = camera.toScreen(100, 100);
+      assert.ok(Math.abs(c.x - 400) < 0.001 && Math.abs(c.y - 400) < 0.001);
+    });
+  });
 });

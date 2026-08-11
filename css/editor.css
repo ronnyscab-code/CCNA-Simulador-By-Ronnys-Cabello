@@ -1223,6 +1223,9 @@
   .btn {
     padding: var(--space-1) var(--space-2);
   }
+  .toolbar-mobile-only {
+    display: inline-block;
+  }
 
   /* Body becomes a single vertical stack: palette on top, canvas in the
      middle, properties as a bottom drawer. */
@@ -1232,6 +1235,8 @@
     min-height: 0;
   }
 
+  /* Devices become a drawer: hidden by default so the canvas gets the whole
+     screen; the ☰ button in the toolbar slides it in. */
   .device-palette {
     order: 0;
     border-right: none;
@@ -1240,6 +1245,10 @@
     overflow-x: auto;
     overflow-y: hidden;
     flex: 0 0 auto;
+    display: none;
+  }
+  body.mobile-palette-open .device-palette {
+    display: block;
   }
   .palette-title,
   .palette-hint {
